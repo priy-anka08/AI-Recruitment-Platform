@@ -1,0 +1,34 @@
+PS C:\Users\pg293\OneDrive\Desktop\AI-Recruitment-Platform\frontend> 
+ yaha se backend me jane k liye 
+
+1. cd ..\backend
+
+2. venv\Scripts\activate
+
+3.uvicorn app.main:app --reload for backend 
+
+4. browser pr ja kr ye search krna h  http://127.0.0.1:8000/docs
+
+ backened ui khul jayega
+ 
+
+               OR
+
+PS C:\Users\pg293\OneDrive\Desktop\AI-Recruitment-Platform\frontend> 
+
+frontend run krne k liye  
+
+
+1. npm start 
+
+browser apne aap hi khul jayega 
+ 
+agr nahi khulta h to 
+
+http://localhost:3000/ 
+
+browser me search krna h 
+
+
+Email: admin@b2world.com
+Password: admin123

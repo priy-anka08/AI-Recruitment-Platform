@@ -17,7 +17,15 @@ const Login = () => {
     setError('');
     try {
       const res = await loginUser({ email, password });
-      login({ email }, res.data.access_token);
+      const token = res.data.access_token;
+      const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+
+      login({
+        email: tokenPayload.sub || email,
+        role: tokenPayload.role || 'recruiter',
+        full_name: tokenPayload.full_name || email.split('@')[0],
+      }, token);
+
       navigate('/');
     } catch (err) {
       setError('Invalid email or password!');

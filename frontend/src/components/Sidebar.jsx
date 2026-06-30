@@ -69,11 +69,11 @@ const Sidebar = () => {
           fontWeight: '700',
           fontSize: '14px',
         }}>
-          {user?.email?.charAt(0).toUpperCase() || 'U'}
+          {(user?.full_name || user?.email)?.charAt(0).toUpperCase() || 'U'}
         </div>
         <div>
           <p style={{ color: '#fff', margin: 0, fontSize: '13px', fontWeight: '600' }}>
-            {user?.email?.split('@')[0] || 'User'}
+            {user?.full_name || user?.email?.split('@')[0] || 'User'}
           </p>
           <p style={{ color: '#8ab4d4', margin: 0, fontSize: '11px' }}>
             {user?.role || 'HR Manager'}
