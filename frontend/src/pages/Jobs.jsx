@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
 import { getJobs, createJob, deleteJob } from '../services/api';
+import axios from 'axios';
 import Sidebar from '../components/Sidebar';
+import { useAuth } from '../context/AuthContext';
 
 const Jobs = () => {
+  const { token } = useAuth();
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingJob, setEditingJob] = useState(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -33,22 +37,50 @@ const Jobs = () => {
     }
   };
 
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      skills_required: '',
+      experience_min: 0,
+      experience_max: 5,
+      salary_min: 0,
+      salary_max: 0,
+      location: '',
+      job_type: 'full-time',
+    });
+    setEditingJob(null);
+    setShowForm(false);
+  };
+
+  const handleEdit = (job) => {
+    setFormData({
+      title: job.title,
+      description: job.description,
+      skills_required: job.skills_required,
+      experience_min: job.experience_min,
+      experience_max: job.experience_max,
+      salary_min: job.salary_min,
+      salary_max: job.salary_max,
+      location: job.location || '',
+      job_type: job.job_type,
+    });
+    setEditingJob(job);
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await createJob(formData);
-      setShowForm(false);
-      setFormData({
-        title: '',
-        description: '',
-        skills_required: '',
-        experience_min: 0,
-        experience_max: 5,
-        salary_min: 0,
-        salary_max: 0,
-        location: '',
-        job_type: 'full-time',
-      });
+      if (editingJob) {
+        await axios.put(`http://127.0.0.1:8000/jobs/${editingJob.id}`, formData, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } else {
+        await createJob(formData);
+      }
+      resetForm();
       fetchJobs();
     } catch (err) {
       console.error(err);
@@ -56,8 +88,20 @@ const Jobs = () => {
   };
 
   const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this job?')) return;
     try {
       await deleteJob(id);
+      fetchJobs();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleToggleStatus = async (id) => {
+    try {
+      await axios.patch(`http://127.0.0.1:8000/jobs/${id}/status`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       fetchJobs();
     } catch (err) {
       console.error(err);
@@ -101,7 +145,10 @@ const Jobs = () => {
             <p style={{ color: '#666', margin: 0 }}>Create and manage job openings</p>
           </div>
           <button
-            onClick={() => setShowForm(!showForm)}
+            onClick={() => {
+              if (showForm && editingJob) resetForm();
+              else setShowForm(!showForm);
+            }}
             style={{
               padding: '12px 24px',
               background: 'linear-gradient(135deg, #667eea, #764ba2)',
@@ -117,7 +164,7 @@ const Jobs = () => {
           </button>
         </div>
 
-        {/* Create Job Form */}
+        {/* Create / Edit Job Form */}
         {showForm && (
           <div style={{
             background: '#fff',
@@ -126,7 +173,9 @@ const Jobs = () => {
             marginBottom: '28px',
             boxShadow: '0 4px 15px rgba(0,0,0,0.06)',
           }}>
-            <h3 style={{ margin: '0 0 20px', color: '#1e3a5f' }}>📝 Post New Job</h3>
+            <h3 style={{ margin: '0 0 20px', color: '#1e3a5f' }}>
+              {editingJob ? '✏️ Edit Job' : '📝 Post New Job'}
+            </h3>
             <form onSubmit={handleSubmit}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>
@@ -218,22 +267,39 @@ const Jobs = () => {
                   </select>
                 </div>
               </div>
-              <button
-                type="submit"
-                style={{
-                  marginTop: '20px',
-                  padding: '12px 32px',
-                  background: 'linear-gradient(135deg, #667eea, #764ba2)',
-                  border: 'none',
-                  borderRadius: '10px',
-                  color: '#fff',
-                  fontSize: '15px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                }}
-              >
-                🚀 Post Job
-              </button>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+                <button
+                  type="submit"
+                  style={{
+                    padding: '12px 32px',
+                    background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                    border: 'none',
+                    borderRadius: '10px',
+                    color: '#fff',
+                    fontSize: '15px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {editingJob ? '✅ Update Job' : '🚀 Post Job'}
+                </button>
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  style={{
+                    padding: '12px 32px',
+                    background: '#f1f5f9',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '10px',
+                    color: '#666',
+                    fontSize: '15px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                  }}
+                >
+                  ❌ Cancel
+                </button>
+              </div>
             </form>
           </div>
         )}
@@ -261,13 +327,14 @@ const Jobs = () => {
                 borderRadius: '16px',
                 padding: '24px',
                 boxShadow: '0 4px 15px rgba(0,0,0,0.06)',
-                border: '1px solid #f0f0f0',
+                border: `1px solid ${job.is_active ? '#f0f0f0' : '#fed7d7'}`,
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'flex-start',
+                opacity: job.is_active ? 1 : 0.7,
               }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px', flexWrap: 'wrap' }}>
                     <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#1e3a5f' }}>
                       {job.title}
                     </h3>
@@ -283,13 +350,13 @@ const Jobs = () => {
                     </span>
                     <span style={{
                       padding: '4px 12px',
-                      background: '#48bb7820',
-                      color: '#48bb78',
+                      background: job.is_active ? '#48bb7820' : '#f5656520',
+                      color: job.is_active ? '#48bb78' : '#f56565',
                       borderRadius: '20px',
                       fontSize: '12px',
                       fontWeight: '600',
                     }}>
-                      ✅ Active
+                      {job.is_active ? '✅ Active' : '🔴 Closed'}
                     </span>
                   </div>
                   <p style={{ color: '#666', margin: '0 0 12px', fontSize: '14px' }}>
@@ -312,7 +379,37 @@ const Jobs = () => {
                     </span>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '8px', marginLeft: '16px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginLeft: '16px' }}>
+                  <button
+                    onClick={() => handleEdit(job)}
+                    style={{
+                      padding: '8px 16px',
+                      background: '#ebf4ff',
+                      border: '1px solid #bee3f8',
+                      borderRadius: '8px',
+                      color: '#3182ce',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                    }}
+                  >
+                    ✏️ Edit
+                  </button>
+                  <button
+                    onClick={() => handleToggleStatus(job.id)}
+                    style={{
+                      padding: '8px 16px',
+                      background: job.is_active ? '#fffbeb' : '#f0fdf4',
+                      border: `1px solid ${job.is_active ? '#fbd38d' : '#86efac'}`,
+                      borderRadius: '8px',
+                      color: job.is_active ? '#d69e2e' : '#166534',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                    }}
+                  >
+                    {job.is_active ? '🔒 Close' : '🔓 Reopen'}
+                  </button>
                   <button
                     onClick={() => handleDelete(job.id)}
                     style={{

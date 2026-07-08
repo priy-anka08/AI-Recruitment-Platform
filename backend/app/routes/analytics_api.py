@@ -8,7 +8,6 @@ from app.models.project import Project, Task, Sprint
 
 router = APIRouter()
 
-# Recruitment analytics
 @router.get("/recruitment")
 def get_recruitment_analytics(db: Session = Depends(get_db)):
     total_jobs = db.query(Job).count()
@@ -34,25 +33,33 @@ def get_recruitment_analytics(db: Session = Depends(get_db)):
         "hiring_success_rate": round((selected / total_candidates * 100), 2) if total_candidates > 0 else 0
     }
 
-# Project analytics
+
 @router.get("/projects")
 def get_project_analytics(db: Session = Depends(get_db)):
     total_projects = db.query(Project).count()
     active_projects = db.query(Project).filter(Project.status == "active").count()
     total_tasks = db.query(Task).count()
-    completed_tasks = db.query(Task).filter(Task.status == "completed").count()
+    completed_tasks = db.query(Task).filter(Task.status == "done").count()  # fixed: "done" not "completed"
+    in_progress_tasks = db.query(Task).filter(Task.status == "in_progress").count()
+    todo_tasks = db.query(Task).filter(Task.status == "todo").count()
     total_sprints = db.query(Sprint).count()
+    active_sprints = db.query(Sprint).filter(Sprint.status == "active").count()
+    completed_sprints = db.query(Sprint).filter(Sprint.status == "completed").count()
 
     return {
         "total_projects": total_projects,
         "active_projects": active_projects,
         "total_tasks": total_tasks,
         "completed_tasks": completed_tasks,
+        "in_progress_tasks": in_progress_tasks,
+        "todo_tasks": todo_tasks,
         "task_completion_rate": round((completed_tasks / total_tasks * 100), 2) if total_tasks > 0 else 0,
-        "total_sprints": total_sprints
+        "total_sprints": total_sprints,
+        "active_sprints": active_sprints,
+        "completed_sprints": completed_sprints
     }
 
-# Candidate pipeline
+
 @router.get("/pipeline")
 def get_pipeline(db: Session = Depends(get_db)):
     statuses = [
@@ -64,5 +71,4 @@ def get_pipeline(db: Session = Depends(get_db)):
     for status in statuses:
         count = db.query(Candidate).filter(Candidate.status == status).count()
         pipeline[status] = count
-
     return pipeline

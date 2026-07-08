@@ -97,7 +97,7 @@ const Login = () => {
             />
           </div>
 
-          <div style={{ marginBottom: '24px' }}>
+          <div style={{ marginBottom: '8px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '600', color: '#333' }}>
               Password
             </label>
@@ -117,6 +117,13 @@ const Login = () => {
                 boxSizing: 'border-box',
               }}
             />
+          </div>
+
+          {/* Forgot Password Link */}
+          <div style={{ textAlign: 'right', marginBottom: '24px' }}>
+            <Link to="/forgot-password" style={{ color: '#667eea', fontSize: '13px', fontWeight: '600' }}>
+              Forgot Password?
+            </Link>
           </div>
 
           <button

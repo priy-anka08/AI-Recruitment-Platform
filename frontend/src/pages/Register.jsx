@@ -182,12 +182,14 @@ const Register = () => {
                 background: '#fff',
               }}
             >
+              
               <option value="recruiter">Recruiter</option>
               <option value="hr_manager">HR Manager</option>
               <option value="project_manager">Project Manager</option>
               <option value="team_lead">Team Lead</option>
               <option value="developer">Developer</option>
               <option value="candidate">Candidate</option>
+              <option value="super_admin">Super Admin</option>
             </select>
           </div>
 
