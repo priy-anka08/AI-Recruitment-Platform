@@ -5,6 +5,7 @@ from app.models.interview import Interview
 from app.models.candidate import Candidate
 from app.schemas.interview_schema import InterviewCreate, InterviewResponse
 from app.services.email_service import send_interview_reminder, send_slot_selection_email
+from app.services.calendar_service import create_calendar_event, delete_calendar_event
 from typing import List
 from datetime import datetime, timedelta
 import uuid
@@ -59,7 +60,6 @@ async def send_slots_to_candidate(
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
 
-    # Generate slots for given date
     base_date = datetime.strptime(date, "%Y-%m-%d")
     slots = []
     current = base_date.replace(hour=9, minute=0, second=0)
@@ -72,7 +72,6 @@ async def send_slots_to_candidate(
         })
         current += timedelta(minutes=duration_minutes)
 
-    # Generate unique token
     token = secrets.token_urlsafe(32)
     slot_tokens[token] = {
         "candidate_id": candidate_id,
@@ -99,7 +98,7 @@ async def send_slots_to_candidate(
     return {"message": "Slot selection email sent", "token": token}
 
 
-# Get slots for candidate selection (candidate facing)
+# Get slots for candidate selection
 @router.get("/select-slot/{token}")
 def get_slots_for_candidate(token: str):
     data = slot_tokens.get(token)
@@ -136,7 +135,6 @@ async def confirm_slot(
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
 
-    # Create interview with selected slot
     new_interview = Interview(
         id=str(uuid.uuid4()),
         candidate_id=candidate_id,
@@ -152,6 +150,16 @@ async def confirm_slot(
     db.refresh(new_interview)
 
     scheduled_time_str = datetime.fromisoformat(selected_slot).strftime("%d %B %Y, %I:%M %p")
+
+    # Add to Google Calendar
+    background_tasks.add_task(
+        create_calendar_event,
+        title=f"Interview - {candidate.full_name} ({data['interview_type'].title()} Round)",
+        description=f"Candidate: {candidate.full_name}\nEmail: {candidate.email}\nInterview Type: {data['interview_type'].title()} Round\nSelected by candidate",
+        start_time=selected_slot,
+        duration_minutes=data["duration_minutes"],
+        attendee_email=candidate.email,
+    )
 
     background_tasks.add_task(
         send_interview_reminder,
@@ -173,7 +181,7 @@ async def confirm_slot(
     }
 
 
-# Schedule interview with email reminder
+# Schedule interview with email reminder + calendar event
 @router.post("/", response_model=InterviewResponse)
 async def schedule_interview(
     interview: InterviewCreate,
@@ -197,6 +205,7 @@ async def schedule_interview(
             str(interview.scheduled_time)
         ).strftime("%d %B %Y, %I:%M %p")
 
+        # Send email reminder
         background_tasks.add_task(
             send_interview_reminder,
             email=candidate.email,
@@ -206,6 +215,17 @@ async def schedule_interview(
             duration_minutes=interview.duration_minutes,
             meeting_link=interview.meeting_link,
             notes=interview.notes,
+        )
+
+        # Add to Google Calendar
+        background_tasks.add_task(
+            create_calendar_event,
+            title=f"Interview - {candidate.full_name} ({interview.interview_type.title()} Round)",
+            description=f"Candidate: {candidate.full_name}\nEmail: {candidate.email}\nInterview Type: {interview.interview_type.title()} Round\nNotes: {interview.notes or 'N/A'}",
+            start_time=str(interview.scheduled_time),
+            duration_minutes=interview.duration_minutes,
+            attendee_email=candidate.email,
+            meeting_link=interview.meeting_link,
         )
 
     return new_interview
