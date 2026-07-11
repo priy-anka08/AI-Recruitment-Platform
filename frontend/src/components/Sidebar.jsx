@@ -36,6 +36,7 @@ const Sidebar = () => {
     { path: '/candidates', icon: '👥', label: 'Candidates', roles: ['super_admin', 'hr_manager', 'recruiter'] },
     { path: '/resume-upload', icon: '📄', label: 'Resume Screening', roles: ['super_admin', 'hr_manager', 'recruiter'] },
     { path: '/interviews', icon: '📅', label: 'Interviews', roles: ['super_admin', 'hr_manager', 'recruiter'] },
+    { path: '/voice-screening', icon: '🎙️', label: 'Voice Screening', roles: ['super_admin', 'hr_manager', 'recruiter'] },
     { path: '/projects', icon: '📋', label: 'Projects', roles: ['super_admin', 'project_manager', 'team_lead', 'developer'] },
     { path: '/analytics', icon: '📊', label: 'Analytics', roles: ['super_admin', 'hr_manager', 'project_manager', 'team_lead'] },
     { path: '/user-management', icon: '⚙️', label: 'User Management', roles: ['super_admin'] },

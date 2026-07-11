@@ -14,6 +14,7 @@ import Profile from './pages/Profile';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import CandidateSlotSelection from './pages/CandidateSlotSelection';
+import VoiceScreening from './pages/VoiceScreening';
 
 const PrivateRoute = ({ children }) => {
   const { token } = useAuth();
@@ -67,6 +68,12 @@ function App() {
           <Route path="/interviews" element={
             <RoleRoute allowedRoles={['super_admin', 'hr_manager', 'recruiter']}>
               <Interviews />
+            </RoleRoute>
+          } />
+
+          <Route path="/voice-screening" element={
+            <RoleRoute allowedRoles={['super_admin', 'hr_manager', 'recruiter']}>
+              <VoiceScreening />
             </RoleRoute>
           } />
 

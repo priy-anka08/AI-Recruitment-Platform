@@ -4,6 +4,31 @@ import axios from 'axios';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 
+const MEETING_PLATFORMS = {
+  zoom: {
+    label: '🎥 Zoom',
+    color: '#2D8CFF',
+    generateLink: () => `https://zoom.us/j/${Math.floor(Math.random() * 9000000000) + 1000000000}`,
+    icon: '🎥',
+  },
+  meet: {
+    label: '📹 Google Meet',
+    color: '#34A853',
+    generateLink: () => {
+      const chars = 'abcdefghijklmnopqrstuvwxyz';
+      const seg = () => Array.from({ length: 3 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+      return `https://meet.google.com/${seg()}-${seg()}-${seg()}`;
+    },
+    icon: '📹',
+  },
+  teams: {
+    label: '💼 Microsoft Teams',
+    color: '#6264A7',
+    generateLink: () => `https://teams.microsoft.com/l/meetup-join/b2world/${Date.now()}`,
+    icon: '💼',
+  },
+};
+
 const Interviews = () => {
   const { token } = useAuth();
   const [interviews, setInterviews] = useState([]);
@@ -17,6 +42,7 @@ const Interviews = () => {
   const [slots, setSlots] = useState([]);
   const [selectedDate, setSelectedDate] = useState('');
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [selectedPlatform, setSelectedPlatform] = useState('zoom');
   const [formData, setFormData] = useState({
     candidate_id: '',
     job_id: '',
@@ -80,6 +106,17 @@ const Interviews = () => {
     setFormData({ ...formData, scheduled_time: slot.start });
   };
 
+  const handlePlatformChange = (platform) => {
+    setSelectedPlatform(platform);
+    const link = MEETING_PLATFORMS[platform].generateLink();
+    setFormData({ ...formData, meeting_link: link });
+  };
+
+  const handleGenerateLink = () => {
+    const link = MEETING_PLATFORMS[selectedPlatform].generateLink();
+    setFormData({ ...formData, meeting_link: link });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -87,6 +124,7 @@ const Interviews = () => {
       setShowForm(false);
       setSlots([]);
       setSelectedDate('');
+      setSelectedPlatform('zoom');
       setFormData({
         candidate_id: '', job_id: '', scheduled_time: '',
         interview_type: 'technical', duration_minutes: '60',
@@ -152,6 +190,14 @@ const Interviews = () => {
   const getJobTitle = (id) => {
     const j = jobs.find(j => j.id === id);
     return j ? j.title : 'Unknown';
+  };
+
+  const getMeetingPlatform = (link) => {
+    if (!link) return null;
+    if (link.includes('zoom.us')) return { icon: '🎥', label: 'Zoom', color: '#2D8CFF' };
+    if (link.includes('meet.google')) return { icon: '📹', label: 'Google Meet', color: '#34A853' };
+    if (link.includes('teams.microsoft')) return { icon: '💼', label: 'Teams', color: '#6264A7' };
+    return { icon: '🔗', label: 'Meeting', color: '#667eea' };
   };
 
   const statusColors = {
@@ -228,7 +274,6 @@ const Interviews = () => {
             <p style={{ color: '#666', fontSize: '14px', margin: '0 0 20px' }}>
               Candidate ko email bheja jayega jisme wo apna preferred interview slot select kar sakta hai.
             </p>
-
             {sendSlotsSuccess && (
               <div style={{
                 padding: '12px', borderRadius: '8px', marginBottom: '16px',
@@ -240,7 +285,6 @@ const Interviews = () => {
                 {sendSlotsSuccess}
               </div>
             )}
-
             <form onSubmit={handleSendSlots}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>
@@ -382,11 +426,54 @@ const Interviews = () => {
                   </div>
                 )}
 
-                <div>
-                  <label style={labelStyle}>Meeting Link</label>
-                  <input style={inputStyle} type="text" placeholder="https://meet.google.com/..."
-                    value={formData.meeting_link}
-                    onChange={(e) => setFormData({ ...formData, meeting_link: e.target.value })} />
+                {/* Meeting Platform Selection */}
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={labelStyle}>Meeting Platform</label>
+                  <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
+                    {Object.entries(MEETING_PLATFORMS).map(([key, platform]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => handlePlatformChange(key)}
+                        style={{
+                          padding: '10px 20px',
+                          borderRadius: '10px',
+                          border: selectedPlatform === key ? `2px solid ${platform.color}` : '2px solid #e2e8f0',
+                          background: selectedPlatform === key ? `${platform.color}15` : '#fff',
+                          color: selectedPlatform === key ? platform.color : '#666',
+                          cursor: 'pointer', fontSize: '13px', fontWeight: '600',
+                        }}
+                      >
+                        {platform.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <input
+                      style={{ ...inputStyle, flex: 1 }}
+                      type="text"
+                      placeholder="Meeting link (auto-generated or custom)"
+                      value={formData.meeting_link}
+                      onChange={(e) => setFormData({ ...formData, meeting_link: e.target.value })}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleGenerateLink}
+                      style={{
+                        padding: '10px 16px', whiteSpace: 'nowrap',
+                        background: MEETING_PLATFORMS[selectedPlatform].color,
+                        border: 'none', borderRadius: '8px', color: '#fff',
+                        fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+                      }}
+                    >
+                      🔄 Generate Link
+                    </button>
+                  </div>
+                  {formData.meeting_link && (
+                    <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#48bb78', fontWeight: '600' }}>
+                      ✅ {MEETING_PLATFORMS[selectedPlatform]?.label || 'Meeting'} link ready
+                    </p>
+                  )}
                 </div>
 
                 <div style={{ gridColumn: '1 / -1' }}>
@@ -423,92 +510,108 @@ const Interviews = () => {
           </div>
         ) : (
           <div style={{ display: 'grid', gap: '16px' }}>
-            {interviews.map((interview) => (
-              <div key={interview.id} style={{
-                background: '#fff', borderRadius: '16px',
-                padding: '24px', boxShadow: '0 4px 15px rgba(0,0,0,0.06)',
-                border: `1px solid ${interview.status === 'cancelled' ? '#fed7d7' : '#f0f0f0'}`,
-                opacity: interview.status === 'cancelled' ? 0.7 : 1,
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <div style={{
-                      width: '48px', height: '48px', borderRadius: '12px',
-                      background: '#667eea20', display: 'flex',
-                      alignItems: 'center', justifyContent: 'center', fontSize: '24px',
-                    }}>
-                      📅
-                    </div>
-                    <div>
-                      <div style={{ display: 'flex', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
-                        <span style={{
-                          padding: '3px 10px',
-                          background: typeColors[interview.interview_type]?.bg || '#f0f0f0',
-                          color: typeColors[interview.interview_type]?.color || '#666',
-                          borderRadius: '20px', fontSize: '12px', fontWeight: '600',
-                        }}>
-                          {interview.interview_type} round
-                        </span>
-                        <span style={{
-                          padding: '3px 10px',
-                          background: statusColors[interview.status]?.bg || '#f0f0f0',
-                          color: statusColors[interview.status]?.color || '#666',
-                          borderRadius: '20px', fontSize: '12px', fontWeight: '600',
-                        }}>
-                          {interview.status}
-                        </span>
+            {interviews.map((interview) => {
+              const platform = getMeetingPlatform(interview.meeting_link);
+              return (
+                <div key={interview.id} style={{
+                  background: '#fff', borderRadius: '16px',
+                  padding: '24px', boxShadow: '0 4px 15px rgba(0,0,0,0.06)',
+                  border: `1px solid ${interview.status === 'cancelled' ? '#fed7d7' : '#f0f0f0'}`,
+                  opacity: interview.status === 'cancelled' ? 0.7 : 1,
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <div style={{
+                        width: '48px', height: '48px', borderRadius: '12px',
+                        background: '#667eea20', display: 'flex',
+                        alignItems: 'center', justifyContent: 'center', fontSize: '24px',
+                      }}>
+                        📅
                       </div>
-                      <p style={{ margin: '0 0 4px', fontWeight: '700', color: '#1e3a5f', fontSize: '15px' }}>
-                        👤 {getCandidateName(interview.candidate_id)}
-                      </p>
-                      <p style={{ margin: '0 0 4px', color: '#666', fontSize: '13px' }}>
-                        💼 {getJobTitle(interview.job_id)}
-                      </p>
-                      <p style={{ margin: '0 0 4px', fontWeight: '600', color: '#333', fontSize: '13px' }}>
-                        🕐 {new Date(interview.scheduled_time).toLocaleString()}
-                      </p>
-                      <p style={{ margin: 0, color: '#666', fontSize: '13px' }}>
-                        ⏱️ Duration: {interview.duration_minutes} mins
-                        {interview.meeting_link && (
-                          <a href={interview.meeting_link} target="_blank" rel="noreferrer"
-                            style={{ marginLeft: '12px', color: '#667eea', fontWeight: '600' }}>
-                            🔗 Join Meeting
-                          </a>
-                        )}
-                      </p>
-                      {interview.notes && (
-                        <p style={{ margin: '6px 0 0', color: '#888', fontSize: '12px', fontStyle: 'italic' }}>
-                          📝 {interview.notes}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {interview.status !== 'cancelled' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {interview.status === 'scheduled' && (
-                        <button onClick={() => handleStatusUpdate(interview.id, 'completed')}
-                          style={{
-                            padding: '8px 16px', background: '#f0fdf4',
-                            border: '1px solid #86efac', borderRadius: '8px',
-                            color: '#166534', cursor: 'pointer', fontSize: '13px', fontWeight: '600',
+                      <div>
+                        <div style={{ display: 'flex', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
+                          <span style={{
+                            padding: '3px 10px',
+                            background: typeColors[interview.interview_type]?.bg || '#f0f0f0',
+                            color: typeColors[interview.interview_type]?.color || '#666',
+                            borderRadius: '20px', fontSize: '12px', fontWeight: '600',
                           }}>
-                          ✅ Mark Complete
-                        </button>
-                      )}
-                      <button onClick={() => handleCancel(interview.id)}
-                        style={{
-                          padding: '8px 16px', background: '#fff5f5',
-                          border: '1px solid #fed7d7', borderRadius: '8px',
-                          color: '#f56565', cursor: 'pointer', fontSize: '13px', fontWeight: '600',
-                        }}>
-                        ❌ Cancel
-                      </button>
+                            {interview.interview_type} round
+                          </span>
+                          <span style={{
+                            padding: '3px 10px',
+                            background: statusColors[interview.status]?.bg || '#f0f0f0',
+                            color: statusColors[interview.status]?.color || '#666',
+                            borderRadius: '20px', fontSize: '12px', fontWeight: '600',
+                          }}>
+                            {interview.status}
+                          </span>
+                          {platform && (
+                            <span style={{
+                              padding: '3px 10px',
+                              background: `${platform.color}15`,
+                              color: platform.color,
+                              borderRadius: '20px', fontSize: '12px', fontWeight: '600',
+                            }}>
+                              {platform.icon} {platform.label}
+                            </span>
+                          )}
+                        </div>
+                        <p style={{ margin: '0 0 4px', fontWeight: '700', color: '#1e3a5f', fontSize: '15px' }}>
+                          👤 {getCandidateName(interview.candidate_id)}
+                        </p>
+                        <p style={{ margin: '0 0 4px', color: '#666', fontSize: '13px' }}>
+                          💼 {getJobTitle(interview.job_id)}
+                        </p>
+                        <p style={{ margin: '0 0 4px', fontWeight: '600', color: '#333', fontSize: '13px' }}>
+                          🕐 {new Date(interview.scheduled_time).toLocaleString()}
+                        </p>
+                        <p style={{ margin: 0, color: '#666', fontSize: '13px' }}>
+                          ⏱️ Duration: {interview.duration_minutes} mins
+                          {interview.meeting_link && (
+                            <a href={interview.meeting_link} target="_blank" rel="noreferrer"
+                              style={{
+                                marginLeft: '12px', fontWeight: '600',
+                                color: platform?.color || '#667eea',
+                              }}>
+                              {platform?.icon || '🔗'} Join {platform?.label || 'Meeting'}
+                            </a>
+                          )}
+                        </p>
+                        {interview.notes && (
+                          <p style={{ margin: '6px 0 0', color: '#888', fontSize: '12px', fontStyle: 'italic' }}>
+                            📝 {interview.notes}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  )}
+
+                    {interview.status !== 'cancelled' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {interview.status === 'scheduled' && (
+                          <button onClick={() => handleStatusUpdate(interview.id, 'completed')}
+                            style={{
+                              padding: '8px 16px', background: '#f0fdf4',
+                              border: '1px solid #86efac', borderRadius: '8px',
+                              color: '#166534', cursor: 'pointer', fontSize: '13px', fontWeight: '600',
+                            }}>
+                            ✅ Mark Complete
+                          </button>
+                        )}
+                        <button onClick={() => handleCancel(interview.id)}
+                          style={{
+                            padding: '8px 16px', background: '#fff5f5',
+                            border: '1px solid #fed7d7', borderRadius: '8px',
+                            color: '#f56565', cursor: 'pointer', fontSize: '13px', fontWeight: '600',
+                          }}>
+                          ❌ Cancel
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
