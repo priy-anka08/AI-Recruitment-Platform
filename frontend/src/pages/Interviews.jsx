@@ -81,7 +81,7 @@ const Interviews = () => {
     setLoadingSlots(true);
     try {
       const res = await axios.get(
-        `http://127.0.0.1:8000/interviews/slots?date=${date}&duration_minutes=${duration}`
+        `https://ai-recruitment-platform-backend-uukb.onrender.com/interviews/slots?date=${date}&duration_minutes=${duration}`
       );
       setSlots(res.data.slots);
     } catch (err) {
@@ -142,7 +142,7 @@ const Interviews = () => {
     setSendSlotsSuccess('');
     try {
       await axios.post(
-        `http://127.0.0.1:8000/interviews/send-slots/${sendSlotsData.candidate_id}?date=${sendSlotsData.date}&duration_minutes=${sendSlotsData.duration_minutes}&interview_type=${sendSlotsData.interview_type}`,
+        `https://ai-recruitment-platform-backend-uukb.onrender.com/interviews/send-slots/${sendSlotsData.candidate_id}?date=${sendSlotsData.date}&duration_minutes=${sendSlotsData.duration_minutes}&interview_type=${sendSlotsData.interview_type}`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -161,7 +161,7 @@ const Interviews = () => {
 
   const handleStatusUpdate = async (id, status) => {
     try {
-      await axios.put(`http://127.0.0.1:8000/interviews/${id}/status?status=${status}`, {}, {
+      await axios.put(`https://ai-recruitment-platform-backend-uukb.onrender.com/interviews/${id}/status?status=${status}`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
       fetchAll();
@@ -173,7 +173,7 @@ const Interviews = () => {
   const handleCancel = async (id) => {
     if (!window.confirm('Cancel this interview?')) return;
     try {
-      await axios.delete(`http://127.0.0.1:8000/interviews/${id}`, {
+      await axios.delete(`https://ai-recruitment-platform-backend-uukb.onrender.com/interviews/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       fetchAll();

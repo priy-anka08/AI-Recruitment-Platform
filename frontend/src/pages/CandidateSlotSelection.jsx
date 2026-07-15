@@ -21,7 +21,7 @@ const CandidateSlotSelection = () => {
 
   const fetchSlots = async () => {
     try {
-      const res = await axios.get(`http://127.0.0.1:8000/interviews/select-slot/${token}`);
+      const res = await axios.get(`https://ai-recruitment-platform-backend-uukb.onrender.com/interviews/select-slot/${token}`);
       setSlotData(res.data);
     } catch (err) {
       setError('This link is invalid or has expired. Please contact HR.');
@@ -35,7 +35,7 @@ const CandidateSlotSelection = () => {
     setConfirming(true);
     try {
       await axios.post(
-        `http://127.0.0.1:8000/interviews/confirm-slot?token=${token}&selected_slot=${selectedSlot}`
+        `https://ai-recruitment-platform-backend-uukb.onrender.com/interviews/confirm-slot?token=${token}&selected_slot=${selectedSlot}`
       );
       setConfirmed(true);
     } catch (err) {

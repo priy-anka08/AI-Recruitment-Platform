@@ -36,7 +36,7 @@ const UserManagement = () => {
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get('http://127.0.0.1:8000/users', {
+      const res = await axios.get('https://ai-recruitment-platform-backend-uukb.onrender.com/users', {
         headers: { Authorization: `Bearer ${token}` },
       });
       setUsers(res.data);
@@ -51,7 +51,7 @@ const UserManagement = () => {
     setUpdating(userId);
     try {
       await axios.patch(
-        `http://127.0.0.1:8000/users/${userId}/role`,
+        `https://ai-recruitment-platform-backend-uukb.onrender.com/users/${userId}/role`,
         { role: newRole },
         { headers: { Authorization: `Bearer ${token}` } }
       );

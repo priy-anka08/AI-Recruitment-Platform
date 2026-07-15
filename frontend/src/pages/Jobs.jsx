@@ -74,7 +74,7 @@ const Jobs = () => {
     e.preventDefault();
     try {
       if (editingJob) {
-        await axios.put(`http://127.0.0.1:8000/jobs/${editingJob.id}`, formData, {
+        await axios.put(`https://ai-recruitment-platform-backend-uukb.onrender.com/jobs/${editingJob.id}`, formData, {
           headers: { Authorization: `Bearer ${token}` },
         });
       } else {
@@ -99,7 +99,7 @@ const Jobs = () => {
 
   const handleToggleStatus = async (id) => {
     try {
-      await axios.patch(`http://127.0.0.1:8000/jobs/${id}/status`, {}, {
+      await axios.patch(`https://ai-recruitment-platform-backend-uukb.onrender.com/jobs/${id}/status`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
       fetchJobs();

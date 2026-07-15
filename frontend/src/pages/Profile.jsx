@@ -27,7 +27,7 @@ const Profile = () => {
 
   const fetchProfile = async () => {
     try {
-      const res = await axios.get('http://127.0.0.1:8000/users/me', {
+      const res = await axios.get('https://ai-recruitment-platform-backend-uukb.onrender.com/users/me', {
         headers: { Authorization: `Bearer ${token}` },
       });
       setProfile(res.data);
@@ -42,7 +42,7 @@ const Profile = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await axios.patch('http://127.0.0.1:8000/users/me', formData, {
+      const res = await axios.patch('https://ai-recruitment-platform-backend-uukb.onrender.com/users/me', formData, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setProfile(res.data);
@@ -70,7 +70,7 @@ const Profile = () => {
     }
     setSavingPassword(true);
     try {
-      await axios.patch('http://127.0.0.1:8000/users/me/password', {
+      await axios.patch('https://ai-recruitment-platform-backend-uukb.onrender.com/users/me/password', {
         current_password: passwordData.current_password,
         new_password: passwordData.new_password,
       }, {

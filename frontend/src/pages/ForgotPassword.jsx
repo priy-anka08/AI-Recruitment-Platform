@@ -14,7 +14,7 @@ const ForgotPassword = () => {
     setMessage('');
     setError('');
     try {
-      const res = await axios.post('http://127.0.0.1:8000/auth/forgot-password', { email });
+      const res = await axios.post('https://ai-recruitment-platform-backend-uukb.onrender.com/auth/forgot-password', { email });
       setMessage(res.data.message);
     } catch (err) {
       setError('Something went wrong. Please try again.');

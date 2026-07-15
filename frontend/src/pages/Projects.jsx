@@ -33,7 +33,7 @@ const Projects = () => {
 
   const fetchTasks = async (projectId) => {
     try {
-      const res = await axios.get(`http://127.0.0.1:8000/projects/${projectId}/tasks`);
+      const res = await axios.get(`https://ai-recruitment-platform-backend-uukb.onrender.com/projects/${projectId}/tasks`);
       setProjectTasks(prev => ({ ...prev, [projectId]: res.data }));
     } catch (err) {
       console.error(err);
@@ -42,7 +42,7 @@ const Projects = () => {
 
   const fetchSprints = async (projectId) => {
     try {
-      const res = await axios.get(`http://127.0.0.1:8000/projects/${projectId}/sprints`);
+      const res = await axios.get(`https://ai-recruitment-platform-backend-uukb.onrender.com/projects/${projectId}/sprints`);
       setProjectSprints(prev => ({ ...prev, [projectId]: res.data }));
     } catch (err) {
       console.error(err);
@@ -51,7 +51,7 @@ const Projects = () => {
 
   const fetchTeam = async (projectId) => {
     try {
-      const res = await axios.get(`http://127.0.0.1:8000/projects/${projectId}/team`);
+      const res = await axios.get(`https://ai-recruitment-platform-backend-uukb.onrender.com/projects/${projectId}/team`);
       setProjectTeam(prev => ({ ...prev, [projectId]: res.data }));
     } catch (err) {
       console.error(err);
@@ -99,7 +99,7 @@ const Projects = () => {
   const handleGenerateSprints = async (projectId) => {
     setGeneratingSprints(projectId);
     try {
-      await axios.post(`http://127.0.0.1:8000/projects/${projectId}/generate-sprints`);
+      await axios.post(`https://ai-recruitment-platform-backend-uukb.onrender.com/projects/${projectId}/generate-sprints`);
       await fetchSprints(projectId);
       await fetchTasks(projectId);
       setExpandedProject(projectId);
@@ -113,7 +113,7 @@ const Projects = () => {
 
   const handleTaskStatus = async (taskId, status, projectId) => {
     try {
-      await axios.put(`http://127.0.0.1:8000/projects/task/${taskId}/status?status=${status}`);
+      await axios.put(`https://ai-recruitment-platform-backend-uukb.onrender.com/projects/task/${taskId}/status?status=${status}`);
       fetchTasks(projectId);
     } catch (err) {
       console.error(err);
@@ -122,7 +122,7 @@ const Projects = () => {
 
   const handleTaskAssign = async (taskId, assignedTo, projectId) => {
     try {
-      await axios.put(`http://127.0.0.1:8000/projects/task/${taskId}/assign?assigned_to=${assignedTo}`);
+      await axios.put(`https://ai-recruitment-platform-backend-uukb.onrender.com/projects/task/${taskId}/assign?assigned_to=${assignedTo}`);
       fetchTasks(projectId);
     } catch (err) {
       console.error(err);
@@ -131,7 +131,7 @@ const Projects = () => {
 
   const handleSprintStatus = async (sprintId, status, projectId) => {
     try {
-      await axios.put(`http://127.0.0.1:8000/projects/sprint/${sprintId}/status?status=${status}`);
+      await axios.put(`https://ai-recruitment-platform-backend-uukb.onrender.com/projects/sprint/${sprintId}/status?status=${status}`);
       fetchSprints(projectId);
     } catch (err) {
       console.error(err);

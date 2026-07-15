@@ -23,7 +23,7 @@ const ResetPassword = () => {
     setMessage('');
     setError('');
     try {
-      const res = await axios.post('http://127.0.0.1:8000/auth/reset-password', {
+      const res = await axios.post('https://ai-recruitment-platform-backend-uukb.onrender.com/auth/reset-password', {
         token,
         new_password: newPassword,
       });

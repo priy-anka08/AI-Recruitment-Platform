@@ -46,7 +46,7 @@ const VoiceScreening = () => {
     if (!selectedJob || !selectedCandidate) return;
     setLoading(true);
     try {
-      const res = await axios.get(`http://127.0.0.1:8000/voice/questions/${selectedJob}`);
+      const res = await axios.get(`https://ai-recruitment-platform-backend-uukb.onrender.com/voice/questions/${selectedJob}`);
       setQuestions(res.data.questions);
       setStep(2);
     } catch (err) {
@@ -117,7 +117,7 @@ const VoiceScreening = () => {
     const selectedJobData = jobs.find(j => j.id === selectedJob);
     try {
       const res = await axios.post(
-        `http://127.0.0.1:8000/voice/evaluate/${selectedCandidate}`,
+        `https://ai-recruitment-platform-backend-uukb.onrender.com/voice/evaluate/${selectedCandidate}`,
         {
           answers,
           info,
