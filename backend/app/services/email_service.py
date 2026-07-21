@@ -19,7 +19,7 @@ conf = ConnectionConfig(
 
 
 async def send_reset_email(email: EmailStr, token: str):
-    reset_link = f"http://localhost:3000/reset-password?token={token}"
+    reset_link = f"https://ai-recruitment-platform-psi-umber.vercel.app/reset-password?token={token}"
     message = MessageSchema(
         subject="Password Reset — B2World AI Recruitment",
         recipients=[email],

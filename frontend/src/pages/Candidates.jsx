@@ -26,6 +26,10 @@ const Candidates = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
 
+  // ADDED: Search & Modal States (Priority 1 & 3)
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCandidate, setSelectedCandidate] = useState(null);
+
   useEffect(() => {
     fetchCandidates();
   }, []);
@@ -50,9 +54,42 @@ const Candidates = () => {
     }
   };
 
-  const filtered = filter === 'all'
-    ? candidates
-    : candidates.filter(c => c.status === filter);
+  // ADDED: Resume Download Action (Priority 4)
+  const handleDownloadResume = (e, candidate) => {
+    e.stopPropagation();
+    if (candidate.resume_url || candidate.resume) {
+      const link = document.createElement('a');
+      link.href = candidate.resume_url || candidate.resume;
+      link.target = '_blank';
+      link.download = `${candidate.full_name || 'Candidate'}_Resume.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      alert('Resume file not available for this candidate.');
+    }
+  };
+
+  // ADDED: Analytics Metrics Calculations (Priority 2)
+  const totalCount = candidates.length;
+  const avgAtsScore = totalCount > 0 
+    ? Math.round(candidates.reduce((sum, c) => sum + (c.ats_score || 0), 0) / totalCount) 
+    : 0;
+  const shortlistedCount = candidates.filter(c => (c.ats_score || 0) >= 70).length;
+  const screenedCount = candidates.filter(c => c.status === 'screened').length;
+
+  // UPDATED: Combined Filter + Search Logic (Priority 1)
+  const filtered = candidates.filter(c => {
+    const matchesFilter = filter === 'all' || c.status === filter;
+    const term = searchTerm.toLowerCase();
+    const matchesSearch = 
+      !searchTerm ||
+      (c.full_name && c.full_name.toLowerCase().includes(term)) ||
+      (c.email && c.email.toLowerCase().includes(term)) ||
+      (c.skills && c.skills.toLowerCase().includes(term));
+
+    return matchesFilter && matchesSearch;
+  });
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f7f8fc' }}>
@@ -60,7 +97,7 @@ const Candidates = () => {
       <div style={{ marginLeft: '250px', flex: 1, padding: '32px' }}>
 
         {/* Header */}
-        <div style={{ marginBottom: '32px' }}>
+        <div style={{ marginBottom: '24px' }}>
           <h1 style={{ margin: '0 0 8px', fontSize: '28px', fontWeight: '700', color: '#1e3a5f' }}>
             👥 Candidates
           </h1>
@@ -69,50 +106,100 @@ const Candidates = () => {
           </p>
         </div>
 
-        {/* Filter Tabs */}
+        {/* ADDED: Priority 2 - Analytics Cards */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '16px',
+          marginBottom: '28px'
+        }}>
+          <div style={{ background: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+            <p style={{ margin: 0, fontSize: '12px', color: '#666', fontWeight: '600', textTransform: 'uppercase' }}>Total Candidates</p>
+            <h2 style={{ margin: '8px 0 0', fontSize: '24px', fontWeight: '700', color: '#1e3a5f' }}>{totalCount}</h2>
+          </div>
+          <div style={{ background: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+            <p style={{ margin: 0, fontSize: '12px', color: '#666', fontWeight: '600', textTransform: 'uppercase' }}>Avg ATS Score</p>
+            <h2 style={{ margin: '8px 0 0', fontSize: '24px', fontWeight: '700', color: '#48bb78' }}>{avgAtsScore}%</h2>
+          </div>
+          <div style={{ background: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+            <p style={{ margin: 0, fontSize: '12px', color: '#666', fontWeight: '600', textTransform: 'uppercase' }}>Top Matched (70%+)</p>
+            <h2 style={{ margin: '8px 0 0', fontSize: '24px', fontWeight: '700', color: '#667eea' }}>{shortlistedCount}</h2>
+          </div>
+          <div style={{ background: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+            <p style={{ margin: 0, fontSize: '12px', color: '#666', fontWeight: '600', textTransform: 'uppercase' }}>Screened</p>
+            <h2 style={{ margin: '8px 0 0', fontSize: '24px', fontWeight: '700', color: '#805ad5' }}>{screenedCount}</h2>
+          </div>
+        </div>
+
+        {/* Filter Tabs & ADDED: Priority 1 - Search Bar */}
         <div style={{
           display: 'flex',
-          gap: '8px',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '16px',
           marginBottom: '24px',
-          flexWrap: 'wrap',
+          flexWrap: 'wrap'
         }}>
-          <button
-            onClick={() => setFilter('all')}
-            style={{
-              padding: '8px 16px',
-              background: filter === 'all' ? '#667eea' : '#fff',
-              color: filter === 'all' ? '#fff' : '#666',
-              border: '1px solid #e2e8f0',
-              borderRadius: '20px',
-              cursor: 'pointer',
-              fontSize: '13px',
-              fontWeight: '600',
-            }}
-          >
-            All ({candidates.length})
-          </button>
-          {allStatuses.map(status => {
-            const count = candidates.filter(c => c.status === status).length;
-            if (count === 0) return null;
-            return (
-              <button
-                key={status}
-                onClick={() => setFilter(status)}
-                style={{
-                  padding: '8px 16px',
-                  background: filter === status ? statusColors[status]?.color : '#fff',
-                  color: filter === status ? '#fff' : '#666',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '20px',
-                  cursor: 'pointer',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                }}
-              >
-                {status.replace('_', ' ')} ({count})
-              </button>
-            );
-          })}
+          {/* Tabs */}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', flex: 1 }}>
+            <button
+              onClick={() => setFilter('all')}
+              style={{
+                padding: '8px 16px',
+                background: filter === 'all' ? '#667eea' : '#fff',
+                color: filter === 'all' ? '#fff' : '#666',
+                border: '1px solid #e2e8f0',
+                borderRadius: '20px',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: '600',
+              }}
+            >
+              All ({candidates.length})
+            </button>
+            {allStatuses.map(status => {
+              const count = candidates.filter(c => c.status === status).length;
+              if (count === 0) return null;
+              return (
+                <button
+                  key={status}
+                  onClick={() => setFilter(status)}
+                  style={{
+                    padding: '8px 16px',
+                    background: filter === status ? statusColors[status]?.color : '#fff',
+                    color: filter === status ? '#fff' : '#666',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '20px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                  }}
+                >
+                  {status.replace('_', ' ')} ({count})
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Search Input */}
+          <div style={{ position: 'relative', minWidth: '260px' }}>
+            <input
+              type="text"
+              placeholder="🔍 Search candidate, skills, email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px 16px',
+                border: '1px solid #cbd5e0',
+                borderRadius: '20px',
+                fontSize: '13px',
+                outline: 'none',
+                background: '#fff',
+                boxShadow: '0 2px 5px rgba(0,0,0,0.02)'
+              }}
+            />
+          </div>
         </div>
 
         {/* Candidates Table */}
@@ -139,10 +226,11 @@ const Candidates = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#f7f8fc', borderBottom: '2px solid #e2e8f0' }}>
-                  {['Candidate', 'Skills', 'Experience', 'ATS Score', 'Status', 'Action'].map(h => (
+                  {/* Added Resume column in Header */}
+                  {['Candidate', 'Skills', 'Experience', 'ATS Score', 'Status', 'Action', 'Resume'].map(h => (
                     <th key={h} style={{
                       padding: '14px 16px',
-                      textAlign: 'left',
+                      textAlign: h === 'Resume' ? 'center' : 'left',
                       fontSize: '13px',
                       fontWeight: '700',
                       color: '#1e3a5f',
@@ -152,10 +240,16 @@ const Candidates = () => {
               </thead>
               <tbody>
                 {filtered.map((candidate, i) => (
-                  <tr key={candidate.id} style={{
-                    borderBottom: '1px solid #f0f0f0',
-                    background: i % 2 === 0 ? '#fff' : '#fafafa',
-                  }}>
+                  <tr 
+                    key={candidate.id} 
+                    onClick={() => setSelectedCandidate(candidate)} // Priority 3: Row Click for Detail Modal
+                    style={{
+                      borderBottom: '1px solid #f0f0f0',
+                      background: i % 2 === 0 ? '#fff' : '#fafafa',
+                      cursor: 'pointer',
+                      transition: 'background 0.2s'
+                    }}
+                  >
                     <td style={{ padding: '14px 16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <div style={{
@@ -243,7 +337,7 @@ const Candidates = () => {
                         {candidate.status?.replace('_', ' ')}
                       </span>
                     </td>
-                    <td style={{ padding: '14px 16px' }}>
+                    <td style={{ padding: '14px 16px' }} onClick={(e) => e.stopPropagation()}>
                       <select
                         value={candidate.status}
                         onChange={(e) => handleStatusUpdate(candidate.id, e.target.value)}
@@ -263,12 +357,136 @@ const Candidates = () => {
                         ))}
                       </select>
                     </td>
+
+                    {/* ADDED: Priority 4 - Resume Actions */}
+                    <td style={{ padding: '14px 16px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={(e) => handleDownloadResume(e, candidate)}
+                        style={{
+                          padding: '6px 12px',
+                          background: '#ebf8ff',
+                          color: '#3182ce',
+                          border: '1px solid #bee3f8',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        📥 Download
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
+
+        {/* ADDED: Priority 3 - Candidate Detail Modal */}
+        {selectedCandidate && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}>
+            <div style={{
+              background: '#fff',
+              borderRadius: '16px',
+              width: '90%',
+              maxWidth: '500px',
+              padding: '24px',
+              boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+              position: 'relative'
+            }}>
+              {/* Close Button */}
+              <button 
+                onClick={() => setSelectedCandidate(null)}
+                style={{
+                  position: 'absolute',
+                  top: '16px',
+                  right: '16px',
+                  background: 'transparent',
+                  border: 'none',
+                  fontSize: '18px',
+                  cursor: 'pointer',
+                  color: '#999'
+                }}
+              >
+                ✖
+              </button>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+                <div style={{
+                  width: '50px',
+                  height: '50px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fff',
+                  fontWeight: '700',
+                  fontSize: '20px'
+                }}>
+                  {selectedCandidate.full_name?.charAt(0)}
+                </div>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '18px', color: '#1e3a5f' }}>{selectedCandidate.full_name}</h2>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>{selectedCandidate.email}</p>
+                </div>
+              </div>
+
+              <div style={{ background: '#f7f8fc', padding: '16px', borderRadius: '12px', marginBottom: '16px' }}>
+                <p style={{ margin: '0 0 8px', fontSize: '13px' }}><strong>Status:</strong> {selectedCandidate.status?.replace('_', ' ')}</p>
+                <p style={{ margin: '0 0 8px', fontSize: '13px' }}><strong>Experience:</strong> {selectedCandidate.experience_years} Years</p>
+                <p style={{ margin: '0 0 8px', fontSize: '13px' }}><strong>ATS Score:</strong> {selectedCandidate.ats_score}%</p>
+                <p style={{ margin: 0, fontSize: '13px' }}><strong>Skills:</strong> {selectedCandidate.skills}</p>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                <button
+                  onClick={() => setSelectedCandidate(null)}
+                  style={{
+                    padding: '8px 16px',
+                    background: '#e2e8f0',
+                    color: '#4a5568',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: '600'
+                  }}
+                >
+                  Close
+                </button>
+                <button
+                  onClick={(e) => handleDownloadResume(e, selectedCandidate)}
+                  style={{
+                    padding: '8px 16px',
+                    background: '#667eea',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: '600'
+                  }}
+                >
+                  📄 Download Resume
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
