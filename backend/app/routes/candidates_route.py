@@ -1,4 +1,5 @@
 import os
+import logging
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from app.database.dependencies import get_db
@@ -9,12 +10,15 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 router = APIRouter()
+logger = logging.getLogger("uvicorn.error")
 
 
 def send_status_email(candidate_email, candidate_name, new_status):
     try:
-        sender_email = os.getenv("EMAIL_SENDER")
-        sender_password = os.getenv("EMAIL_APP_PASSWORD")
+        sender_email = os.getenv("MAIL_FROM")
+        sender_password = os.getenv("MAIL_PASSWORD")
+
+        logger.info(f"Attempting to send email to {candidate_email} using sender={sender_email}")
 
         subject = "Application Status Updated"
         body = f"""
@@ -41,8 +45,10 @@ AI Recruitment Team
         server.send_message(msg)
         server.quit()
 
+        logger.info("Email sent successfully")
+
     except Exception as e:
-        print("Email Error:", e)
+        logger.error(f"Email Error: {e}")
 
 
 @router.get("/")
