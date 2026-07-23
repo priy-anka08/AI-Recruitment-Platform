@@ -1,3 +1,6 @@
+import os
+import cloudinary
+import cloudinary.uploader
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from app.database.dependencies import get_db
@@ -6,7 +9,7 @@ from app.schemas.resume_schema import ResumeUploadResponse, ATSScoreResponse
 from app.services.ai_resume import (
     extract_text_from_pdf,
     extract_text_from_docx,
-    extract_text_from_txt,                                    # ← new
+    extract_text_from_txt,
     parse_resume_with_ai,
     calculate_ats_score
 )
@@ -14,6 +17,13 @@ from app.models.job import Job
 import uuid
 
 router = APIRouter()
+
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET")
+)
+
 
 @router.post("/upload/{job_id}", response_model=ResumeUploadResponse)
 async def upload_resume(
@@ -31,7 +41,7 @@ async def upload_resume(
         resume_text = extract_text_from_pdf(file_bytes)
     elif file.filename.endswith(".docx"):
         resume_text = extract_text_from_docx(file_bytes)
-    elif file.filename.endswith(".txt"):                      # ← new
+    elif file.filename.endswith(".txt"):
         resume_text = extract_text_from_txt(file_bytes)
     else:
         raise HTTPException(status_code=400, detail="Only PDF, DOCX and TXT supported")
@@ -39,11 +49,27 @@ async def upload_resume(
     parsed = parse_resume_with_ai(resume_text)
     ats_result = calculate_ats_score(resume_text, job.description)
 
+    # Upload original file to Cloudinary for view/download
+    resume_url = None
+    try:
+        upload_result = cloudinary.uploader.upload(
+            file_bytes,
+            resource_type="raw",
+            folder="resumes",
+            public_id=f"{uuid.uuid4()}_{file.filename}",
+            overwrite=True
+        )
+        resume_url = upload_result.get("secure_url")
+    except Exception as e:
+        print("Cloudinary upload error:", e)
+
     email = parsed.get("email", f"unknown_{uuid.uuid4()}@temp.com")
     existing = db.query(Candidate).filter(Candidate.email == email).first()
     if existing:
         existing.ats_score = ats_result.get("ats_score", 0.0)
         existing.skills = parsed.get("skills", "")
+        if resume_url:
+            existing.resume_url = resume_url
         db.commit()
         db.refresh(existing)
         return existing
@@ -55,6 +81,7 @@ async def upload_resume(
         phone=parsed.get("phone", ""),
         job_id=job_id,
         resume_text=resume_text,
+        resume_url=resume_url,
         skills=parsed.get("skills", ""),
         experience_years=parsed.get("experience_years", 0),
         education=parsed.get("education", ""),
@@ -66,12 +93,14 @@ async def upload_resume(
     db.refresh(candidate)
     return candidate
 
+
 @router.get("/candidates/{job_id}")
 def get_candidates_by_job(job_id: str, db: Session = Depends(get_db)):
     candidates = db.query(Candidate).filter(
         Candidate.job_id == job_id
     ).order_by(Candidate.ats_score.desc()).all()
     return candidates
+
 
 @router.get("/score/{candidate_id}", response_model=ATSScoreResponse)
 def get_ats_score(candidate_id: str, db: Session = Depends(get_db)):

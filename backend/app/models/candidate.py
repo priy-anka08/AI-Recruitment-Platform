@@ -11,6 +11,7 @@ class Candidate(Base):
     phone = Column(String(20), nullable=True)
     job_id = Column(String, nullable=False)
     resume_text = Column(Text, nullable=True)
+    resume_url = Column(String(500), nullable=True)
     skills = Column(String(500), nullable=True)
     experience_years = Column(Integer, default=0)
     education = Column(String(255), nullable=True)
