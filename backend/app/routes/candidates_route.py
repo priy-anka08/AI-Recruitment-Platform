@@ -1,13 +1,10 @@
 import os
 import logging
+import requests
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from app.database.dependencies import get_db
 from app.models.candidate import Candidate
-
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 
 router = APIRouter()
 logger = logging.getLogger("uvicorn.error")
@@ -15,14 +12,24 @@ logger = logging.getLogger("uvicorn.error")
 
 def send_status_email(candidate_email, candidate_name, new_status):
     try:
-        sender_email = os.getenv("MAIL_FROM")
-        sender_password = os.getenv("MAIL_PASSWORD")
+        api_key = os.getenv("BREVO_API_KEY")
 
-        logger.info(f"Attempting to send email to {candidate_email} using sender={sender_email}")
+        logger.info(f"Attempting to send email to {candidate_email} via Brevo")
 
-        subject = "Application Status Updated"
-        body = f"""
-Dear {candidate_name},
+        url = "https://api.brevo.com/v3/smtp/email"
+        headers = {
+            "accept": "application/json",
+            "api-key": api_key,
+            "content-type": "application/json"
+        }
+        payload = {
+            "sender": {
+                "name": "Sneha Mittal",
+                "email": "snehamittle15@gmail.com"
+            },
+            "to": [{"email": candidate_email, "name": candidate_name}],
+            "subject": "Application Status Updated",
+            "textContent": f"""Dear {candidate_name},
 
 Your application status has been updated.
 
@@ -33,19 +40,14 @@ Thank you for your interest in our recruitment process.
 Regards,
 AI Recruitment Team
 """
-        msg = MIMEMultipart()
-        msg["From"] = sender_email
-        msg["To"] = candidate_email
-        msg["Subject"] = subject
-        msg.attach(MIMEText(body, "plain"))
+        }
 
-        server = smtplib.SMTP("smtp.gmail.com", 587, timeout=10)
-        server.starttls()
-        server.login(sender_email, sender_password)
-        server.send_message(msg)
-        server.quit()
+        response = requests.post(url, json=payload, headers=headers, timeout=10)
 
-        logger.info("Email sent successfully")
+        if response.status_code in (200, 201):
+            logger.info("Email sent successfully via Brevo")
+        else:
+            logger.error(f"Brevo Error: {response.status_code} - {response.text}")
 
     except Exception as e:
         logger.error(f"Email Error: {e}")
