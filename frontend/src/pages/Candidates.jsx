@@ -401,36 +401,54 @@ const Candidates = () => {
                     📄 Resume
                   </p>
                   {selectedCandidate.resume_url ? (
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      
-                        href={selectedCandidate.resume_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          padding: '10px 16px', background: '#667eea',
-                          color: '#fff', borderRadius: '8px', fontSize: '13px',
-                          fontWeight: '600', textDecoration: 'none',
-                          display: 'inline-flex', alignItems: 'center', gap: '6px',
-                        }}
-                      >
-                        👁️ View Resume
-                      </a>
-                      
-                        href={selectedCandidate.resume_url}
-                        download
-                        style={{
-                          padding: '10px 16px', background: '#f1f5f9',
-                          color: '#1e3a5f', borderRadius: '8px', fontSize: '13px',
-                          fontWeight: '600', textDecoration: 'none', border: '1px solid #e2e8f0',
-                          display: 'inline-flex', alignItems: 'center', gap: '6px',
-                        }}
-                      >
-                        ⬇️ Download
-                      </a>
-                    </div>
-                  ) : (
-                    <p style={{ margin: 0, fontSize: '13px', color: '#999' }}>No resume uploaded</p>
-                  )}
+  <div style={{ display: 'flex', gap: '10px' }}>
+
+    <a
+      href={selectedCandidate.resume_url}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        padding: '10px 16px',
+        background: '#667eea',
+        color: '#fff',
+        borderRadius: '8px',
+        fontSize: '13px',
+        fontWeight: '600',
+        textDecoration: 'none',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '6px',
+      }}
+    >
+      👁️ View Resume
+    </a>
+
+    <a
+      href={selectedCandidate.resume_url}
+      download
+      style={{
+        padding: '10px 16px',
+        background: '#f1f5f9',
+        color: '#1e3a5f',
+        borderRadius: '8px',
+        fontSize: '13px',
+        fontWeight: '600',
+        textDecoration: 'none',
+        border: '1px solid #e2e8f0',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '6px',
+      }}
+    >
+      ⬇️ Download
+    </a>
+
+  </div>
+) : (
+  <p style={{ margin: 0, fontSize: '13px', color: '#999' }}>
+    No resume uploaded
+  </p>
+)}
                 </div>
 
                 {/* Skills */}
