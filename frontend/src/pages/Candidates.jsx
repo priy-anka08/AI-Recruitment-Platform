@@ -402,7 +402,7 @@ const Candidates = () => {
       margin: '0 0 10px',
       fontSize: '13px',
       fontWeight: '700',
-      color: '#1e3a5f'
+      color: '#1e3a5f',
     }}
   >
     📄 Resume
@@ -412,10 +412,7 @@ const Candidates = () => {
     <div style={{ display: 'flex', gap: '10px' }}>
 
       <a
-        href={selectedCandidate.resume_url.replace(
-          '/upload/',
-          '/upload/fl_attachment:false/'
-        )}
+        href={selectedCandidate.resume_url}
         target="_blank"
         rel="noopener noreferrer"
         style={{
@@ -428,7 +425,7 @@ const Candidates = () => {
           textDecoration: 'none',
           display: 'inline-flex',
           alignItems: 'center',
-          gap: '6px'
+          gap: '6px',
         }}
       >
         👁️ View Resume
@@ -450,7 +447,7 @@ const Candidates = () => {
           border: '1px solid #e2e8f0',
           display: 'inline-flex',
           alignItems: 'center',
-          gap: '6px'
+          gap: '6px',
         }}
       >
         ⬇️ Download
@@ -462,7 +459,7 @@ const Candidates = () => {
       style={{
         margin: 0,
         fontSize: '13px',
-        color: '#999'
+        color: '#999',
       }}
     >
       No resume uploaded
