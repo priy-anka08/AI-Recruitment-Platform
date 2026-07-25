@@ -66,7 +66,7 @@ const Dashboard = () => {
             fontWeight: '700',
             color: '#1e3a5f',
           }}>
-            👋 Welcome back, {user?.email?.split('@')[0] || 'User'}!
+            👋 Welcome back, {user?.full_name?.split(' ')[0] || 'User'}!
           </h1>
           <p style={{ color: '#666', margin: 0, fontSize: '15px' }}>
             Here's what's happening with your recruitment today.
