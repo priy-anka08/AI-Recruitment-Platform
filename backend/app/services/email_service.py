@@ -11,7 +11,9 @@ SENDER_EMAIL = "snehamittle15@gmail.com"
 
 
 def _send_via_brevo(to_email: str, to_name: str, subject: str, html_content: str):
+    logger.info(f"_send_via_brevo called for {to_email}")
     api_key = os.getenv("BREVO_API_KEY")
+    logger.info(f"BREVO_API_KEY present: {bool(api_key)}")
     headers = {
         "accept": "application/json",
         "api-key": api_key,
@@ -26,6 +28,7 @@ def _send_via_brevo(to_email: str, to_name: str, subject: str, html_content: str
 
     try:
         response = requests.post(BREVO_API_URL, json=payload, headers=headers, timeout=10)
+        logger.info(f"Brevo response status: {response.status_code}")
         if response.status_code in (200, 201):
             logger.info(f"Email sent successfully via Brevo to {to_email}")
         else:
@@ -35,25 +38,30 @@ def _send_via_brevo(to_email: str, to_name: str, subject: str, html_content: str
 
 
 async def send_reset_email(email: EmailStr, token: str):
-    reset_link = f"https://ai-recruitment-platform-psi-umber.vercel.app/reset-password?token={token}"
-    html = f"""
-    <h2>Password Reset Request</h2>
-    <p>Click the link below to reset your password:</p>
-    <a href="{reset_link}" style="
-        display: inline-block;
-        padding: 12px 24px;
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-        text-decoration: none;
-        border-radius: 8px;
-        font-weight: bold;
-    ">Reset Password</a>
-    <p>This link will expire in <strong>15 minutes</strong>.</p>
-    <p>If you did not request this, please ignore this email.</p>
-    <br>
-    <p>— B2World AI Recruitment Platform</p>
-    """
-    _send_via_brevo(email, None, "Password Reset — B2World AI Recruitment", html)
+    logger.info(f"send_reset_email CALLED for {email}")
+    try:
+        reset_link = f"https://ai-recruitment-platform-psi-umber.vercel.app/reset-password?token={token}"
+        html = f"""
+        <h2>Password Reset Request</h2>
+        <p>Click the link below to reset your password:</p>
+        <a href="{reset_link}" style="
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+        ">Reset Password</a>
+        <p>This link will expire in <strong>15 minutes</strong>.</p>
+        <p>If you did not request this, please ignore this email.</p>
+        <br>
+        <p>— B2World AI Recruitment Platform</p>
+        """
+        _send_via_brevo(email, None, "Password Reset — B2World AI Recruitment", html)
+        logger.info(f"send_reset_email FINISHED for {email}")
+    except Exception as e:
+        logger.error(f"send_reset_email CRASHED: {e}")
 
 
 async def send_interview_reminder(
