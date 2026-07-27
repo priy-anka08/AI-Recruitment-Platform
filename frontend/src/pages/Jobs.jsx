@@ -22,6 +22,11 @@ const Jobs = () => {
     job_type: 'full-time',
   });
 
+  // NEW: state for job detail modal
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [jobCandidates, setJobCandidates] = useState([]);
+  const [loadingCandidates, setLoadingCandidates] = useState(false);
+
   useEffect(() => {
     fetchJobs();
   }, []);
@@ -106,6 +111,34 @@ const Jobs = () => {
     } catch (err) {
       console.error(err);
     }
+  };
+
+  // NEW: open job detail modal + fetch its applicants sorted by match score
+  const handleViewDetails = async (job) => {
+    setSelectedJob(job);
+    setLoadingCandidates(true);
+    try {
+      const res = await axios.get(
+        `https://ai-recruitment-platform-backend-uukb.onrender.com/resumes/candidates/${job.id}`
+      );
+      setJobCandidates(res.data);
+    } catch (err) {
+      console.error(err);
+      setJobCandidates([]);
+    } finally {
+      setLoadingCandidates(false);
+    }
+  };
+
+  const closeDetails = () => {
+    setSelectedJob(null);
+    setJobCandidates([]);
+  };
+
+  const getScoreColor = (score) => {
+    if (score >= 70) return '#48bb78';
+    if (score >= 50) return '#ed8936';
+    return '#f56565';
   };
 
   const inputStyle = {
@@ -381,6 +414,21 @@ const Jobs = () => {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginLeft: '16px' }}>
                   <button
+                    onClick={() => handleViewDetails(job)}
+                    style={{
+                      padding: '8px 16px',
+                      background: '#f0fdf4',
+                      border: '1px solid #86efac',
+                      borderRadius: '8px',
+                      color: '#166534',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                    }}
+                  >
+                    📋 View Details
+                  </button>
+                  <button
                     onClick={() => handleEdit(job)}
                     style={{
                       padding: '8px 16px',
@@ -428,6 +476,133 @@ const Jobs = () => {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* NEW: Job Detail Modal — full description + applicants sorted by match score */}
+        {selectedJob && (
+          <div
+            style={{
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(0,0,0,0.5)', zIndex: 1000,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '20px',
+            }}
+            onClick={(e) => { if (e.target === e.currentTarget) closeDetails(); }}
+          >
+            <div style={{
+              background: '#fff', borderRadius: '20px', width: '100%', maxWidth: '720px',
+              maxHeight: '90vh', overflow: 'auto',
+              boxShadow: '0 25px 50px rgba(0,0,0,0.3)',
+            }}>
+              {/* Modal Header */}
+              <div style={{
+                background: 'linear-gradient(135deg, #1e3a5f, #2c5364)',
+                padding: '24px 28px', borderRadius: '20px 20px 0 0',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              }}>
+                <div>
+                  <h3 style={{ margin: 0, color: '#fff', fontSize: '20px' }}>
+                    {selectedJob.title}
+                  </h3>
+                  <p style={{ margin: '4px 0 0', color: '#8ab4d4', fontSize: '13px' }}>
+                    📍 {selectedJob.location || 'Not specified'} · {selectedJob.job_type}
+                  </p>
+                </div>
+                <button onClick={closeDetails} style={{
+                  background: 'rgba(255,255,255,0.2)', border: 'none',
+                  borderRadius: '8px', color: '#fff', padding: '6px 12px',
+                  cursor: 'pointer', fontSize: '16px',
+                }}>✕</button>
+              </div>
+
+              <div style={{ padding: '28px' }}>
+                {/* Full Job Description */}
+                <div style={{ marginBottom: '24px' }}>
+                  <p style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: '700', color: '#1e3a5f' }}>
+                    📝 Job Description
+                  </p>
+                  <p style={{
+                    margin: 0, fontSize: '14px', color: '#333', lineHeight: '1.6',
+                    background: '#f7f8fc', padding: '16px', borderRadius: '10px',
+                    whiteSpace: 'pre-wrap',
+                  }}>
+                    {selectedJob.description}
+                  </p>
+                </div>
+
+                {/* Skills / Experience / Salary */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '24px' }}>
+                  <div style={{ background: '#f0f4ff', borderRadius: '10px', padding: '12px' }}>
+                    <p style={{ margin: '0 0 4px', fontSize: '11px', color: '#666' }}>Experience</p>
+                    <p style={{ margin: 0, fontWeight: '700', fontSize: '14px', color: '#1e3a5f' }}>
+                      {selectedJob.experience_min}-{selectedJob.experience_max} yrs
+                    </p>
+                  </div>
+                  <div style={{ background: '#f0fdf4', borderRadius: '10px', padding: '12px' }}>
+                    <p style={{ margin: '0 0 4px', fontSize: '11px', color: '#666' }}>Salary</p>
+                    <p style={{ margin: 0, fontWeight: '700', fontSize: '14px', color: '#1e3a5f' }}>
+                      ₹{selectedJob.salary_min?.toLocaleString()}-₹{selectedJob.salary_max?.toLocaleString()}
+                    </p>
+                  </div>
+                  <div style={{ background: '#fff7ed', borderRadius: '10px', padding: '12px' }}>
+                    <p style={{ margin: '0 0 4px', fontSize: '11px', color: '#666' }}>Skills</p>
+                    <p style={{ margin: 0, fontWeight: '700', fontSize: '13px', color: '#1e3a5f' }}>
+                      {selectedJob.skills_required}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Applicants sorted by JD match */}
+                <div>
+                  <p style={{ margin: '0 0 12px', fontSize: '13px', fontWeight: '700', color: '#1e3a5f' }}>
+                    👥 Applicants ({jobCandidates.length}) — sorted by JD Match
+                  </p>
+
+                  {loadingCandidates ? (
+                    <p style={{ color: '#666', fontSize: '14px' }}>Loading applicants...</p>
+                  ) : jobCandidates.length === 0 ? (
+                    <p style={{ color: '#999', fontSize: '14px' }}>No candidates have applied to this job yet.</p>
+                  ) : (
+                    <div style={{ display: 'grid', gap: '10px' }}>
+                      {jobCandidates.map((c) => (
+                        <div key={c.id} style={{
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          padding: '12px 16px', background: '#f7f8fc', borderRadius: '10px',
+                          border: '1px solid #f0f0f0',
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{
+                              width: '34px', height: '34px', borderRadius: '50%',
+                              background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              color: '#fff', fontWeight: '700', fontSize: '13px',
+                            }}>
+                              {c.full_name?.charAt(0)}
+                            </div>
+                            <div>
+                              <p style={{ margin: 0, fontWeight: '600', fontSize: '13px', color: '#1e3a5f' }}>
+                                {c.full_name}
+                              </p>
+                              <p style={{ margin: 0, fontSize: '11px', color: '#666' }}>{c.email}</p>
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <p style={{ margin: 0, fontSize: '11px', color: '#666' }}>JD Match</p>
+                            <p style={{
+                              margin: 0, fontWeight: '700', fontSize: '15px',
+                              color: getScoreColor(c.ats_score),
+                            }}>
+                              {c.ats_score}%
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
