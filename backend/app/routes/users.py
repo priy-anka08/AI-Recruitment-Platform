@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
@@ -7,6 +7,7 @@ from typing import Optional
 from app.database.dependencies import get_db
 from app.models.user import User
 from app.core.security import verify_token, hash_password, verify_password
+from app.services.email_service import _send_via_brevo
 
 router = APIRouter()
 
@@ -133,10 +134,33 @@ class RoleUpdate(BaseModel):
     role: str
 
 
+def _send_role_update_email(to_email: str, to_name: str, new_role: str):
+    display_role = new_role.replace('_', ' ').title()
+    html = f"""
+    <h2>Your Role Has Been Updated</h2>
+    <p>Dear {to_name},</p>
+    <p>Your role on the <strong>B2World AI Recruitment Platform</strong> has been updated to:</p>
+    <p style="
+        display: inline-block;
+        padding: 10px 20px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border-radius: 8px;
+        font-weight: bold;
+        font-size: 16px;
+    ">{display_role}</p>
+    <p>If you did not expect this change, please contact your administrator.</p>
+    <br>
+    <p>— B2World AI Recruitment Team</p>
+    """
+    _send_via_brevo(to_email, to_name, "Your Role Has Been Updated — B2World AI Recruitment", html)
+
+
 @router.patch("/{user_id}/role")
 def update_user_role(
     user_id: str,
     payload: RoleUpdate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_super_admin)
 ):
@@ -153,6 +177,13 @@ def update_user_role(
     target_user.role = payload.role
     db.commit()
     db.refresh(target_user)
+
+    background_tasks.add_task(
+        _send_role_update_email,
+        target_user.email,
+        target_user.full_name,
+        target_user.role
+    )
 
     return {
         "id": str(target_user.id),
