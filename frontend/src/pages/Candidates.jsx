@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getAllCandidates, updateCandidateStatus } from '../services/api';
+import { getAllCandidates, updateCandidateStatus, getJobs } from '../services/api';
+import axios from 'axios';
 import Sidebar from '../components/Sidebar';
 
 const statusColors = {
@@ -21,12 +22,23 @@ const allStatuses = [
   'selected', 'rejected', 'joined'
 ];
 
+const API_BASE = 'https://ai-recruitment-platform-backend-uukb.onrender.com';
+
 const Candidates = () => {
   const [candidates, setCandidates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [selectedCandidate, setSelectedCandidate] = useState(null);
+
+  // NEW: bulk upload state
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [jobs, setJobs] = useState([]);
+  const [bulkJobId, setBulkJobId] = useState('');
+  const [bulkFile, setBulkFile] = useState(null);
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const [bulkResult, setBulkResult] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     fetchCandidates();
@@ -52,6 +64,70 @@ const Candidates = () => {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  // NEW: open bulk upload modal, load jobs for dropdown
+  const openBulkModal = async () => {
+    setShowBulkModal(true);
+    setBulkResult(null);
+    setBulkFile(null);
+    setBulkJobId('');
+    try {
+      const res = await getJobs();
+      setJobs(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const closeBulkModal = () => {
+    setShowBulkModal(false);
+    setBulkResult(null);
+  };
+
+  // NEW: submit bulk upload
+  const handleBulkUpload = async () => {
+    if (!bulkJobId || !bulkFile) return;
+    setBulkUploading(true);
+    setBulkResult(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', bulkFile);
+      const res = await axios.post(
+        `${API_BASE}/candidates/bulk-upload/${bulkJobId}`,
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      );
+      setBulkResult(res.data);
+      fetchCandidates();
+    } catch (err) {
+      console.error(err);
+      setBulkResult({ message: 'Upload failed', added: 0, skipped: 0, errors: ['Something went wrong'] });
+    } finally {
+      setBulkUploading(false);
+    }
+  };
+
+  // NEW: export candidates to excel
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res = await axios.get(`${API_BASE}/candidates/export/excel`, {
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'candidates_export.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -87,13 +163,44 @@ const Candidates = () => {
       <div style={{ marginLeft: '250px', flex: 1, padding: '32px' }}>
 
         {/* Header */}
-        <div style={{ marginBottom: '24px' }}>
-          <h1 style={{ margin: '0 0 8px', fontSize: '28px', fontWeight: '700', color: '#1e3a5f' }}>
-            👥 Candidates
-          </h1>
-          <p style={{ color: '#666', margin: 0 }}>
-            Manage and track all candidates — {candidates.length} total
-          </p>
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+          marginBottom: '24px', flexWrap: 'wrap', gap: '12px',
+        }}>
+          <div>
+            <h1 style={{ margin: '0 0 8px', fontSize: '28px', fontWeight: '700', color: '#1e3a5f' }}>
+              👥 Candidates
+            </h1>
+            <p style={{ color: '#666', margin: 0 }}>
+              Manage and track all candidates — {candidates.length} total
+            </p>
+          </div>
+
+          {/* NEW: Bulk Upload / Export buttons */}
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button
+              onClick={openBulkModal}
+              style={{
+                padding: '10px 18px', background: '#f0fdf4',
+                border: '1px solid #86efac', borderRadius: '10px',
+                color: '#166534', cursor: 'pointer', fontSize: '13px', fontWeight: '600',
+              }}
+            >
+              📥 Bulk Upload
+            </button>
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              style={{
+                padding: '10px 18px', background: '#ebf4ff',
+                border: '1px solid #bee3f8', borderRadius: '10px',
+                color: '#3182ce', cursor: exporting ? 'not-allowed' : 'pointer',
+                fontSize: '13px', fontWeight: '600',
+              }}
+            >
+              {exporting ? '⏳ Exporting...' : '📤 Export Excel'}
+            </button>
+          </div>
         </div>
 
         {/* Analytics Cards */}
@@ -305,6 +412,96 @@ const Candidates = () => {
           </div>
         )}
 
+        {/* NEW: Bulk Upload Modal */}
+        {showBulkModal && (
+          <div
+            style={{
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(0,0,0,0.5)', zIndex: 1100,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '20px',
+            }}
+            onClick={(e) => { if (e.target === e.currentTarget) closeBulkModal(); }}
+          >
+            <div style={{
+              background: '#fff', borderRadius: '20px', width: '100%', maxWidth: '440px',
+              padding: '28px', boxShadow: '0 25px 50px rgba(0,0,0,0.3)',
+            }}>
+              <h3 style={{ margin: '0 0 20px', color: '#1e3a5f' }}>📥 Bulk Upload Candidates</h3>
+
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#333' }}>
+                Select Job
+              </label>
+              <select
+                value={bulkJobId}
+                onChange={(e) => setBulkJobId(e.target.value)}
+                style={{
+                  width: '100%', padding: '10px 14px', marginBottom: '16px',
+                  border: '2px solid #e2e8f0', borderRadius: '8px', fontSize: '14px', outline: 'none',
+                }}
+              >
+                <option value="">-- Choose a job --</option>
+                {jobs.map(job => (
+                  <option key={job.id} value={job.id}>{job.title}</option>
+                ))}
+              </select>
+
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#333' }}>
+                Excel File (.xlsx) — Columns: Name, Email, Phone
+              </label>
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={(e) => setBulkFile(e.target.files[0])}
+                style={{
+                  width: '100%', padding: '10px', marginBottom: '16px',
+                  border: '2px solid #e2e8f0', borderRadius: '8px', fontSize: '13px',
+                }}
+              />
+
+              {bulkResult && (
+                <div style={{
+                  padding: '12px', borderRadius: '8px', marginBottom: '16px', fontSize: '13px',
+                  background: bulkResult.added > 0 ? '#f0fdf4' : '#fff5f5',
+                  color: bulkResult.added > 0 ? '#166534' : '#c53030',
+                }}>
+                  ✅ Added: {bulkResult.added} &nbsp; ⏭️ Skipped: {bulkResult.skipped}
+                  {bulkResult.errors?.length > 0 && (
+                    <div style={{ marginTop: '6px', fontSize: '12px' }}>
+                      {bulkResult.errors.map((e, i) => <div key={i}>⚠️ {e}</div>)}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={handleBulkUpload}
+                  disabled={!bulkJobId || !bulkFile || bulkUploading}
+                  style={{
+                    flex: 1, padding: '12px', border: 'none', borderRadius: '10px',
+                    background: (!bulkJobId || !bulkFile || bulkUploading) ? '#ccc' : 'linear-gradient(135deg, #667eea, #764ba2)',
+                    color: '#fff', fontWeight: '600', fontSize: '14px',
+                    cursor: (!bulkJobId || !bulkFile || bulkUploading) ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {bulkUploading ? '⏳ Uploading...' : '🚀 Upload'}
+                </button>
+                <button
+                  onClick={closeBulkModal}
+                  style={{
+                    padding: '12px 20px', background: '#f1f5f9',
+                    border: '1px solid #e2e8f0', borderRadius: '10px',
+                    color: '#666', cursor: 'pointer', fontSize: '14px', fontWeight: '600',
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Candidate Detail Modal */}
         {selectedCandidate && (
           <div style={{
@@ -436,6 +633,8 @@ const Candidates = () => {
           '/upload/',
           '/upload/fl_attachment/'
         )}
+        target="_blank"
+        rel="noopener noreferrer"
         style={{
           padding: '10px 16px',
           background: '#f1f5f9',
