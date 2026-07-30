@@ -16,6 +16,13 @@ const statusColors = {
   joined: { bg: '#b2f5ea', color: '#234e52' },
 };
 
+const recommendationColors = {
+  'Highly Recommended': { bg: '#c6f6d5', color: '#22543d' },
+  'Recommended': { bg: '#bee3f8', color: '#2b6cb0' },
+  'Needs Review': { bg: '#feebc8', color: '#c05621' },
+  'Not Suitable': { bg: '#fed7d7', color: '#c53030' },
+};
+
 const allStatuses = [
   'applied', 'under_review', 'screened', 'shortlisted',
   'interview_scheduled', 'technical_round', 'hr_round',
@@ -31,7 +38,6 @@ const Candidates = () => {
   const [search, setSearch] = useState('');
   const [selectedCandidate, setSelectedCandidate] = useState(null);
 
-  // NEW: bulk upload state
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [jobs, setJobs] = useState([]);
   const [bulkJobId, setBulkJobId] = useState('');
@@ -67,7 +73,6 @@ const Candidates = () => {
     }
   };
 
-  // NEW: open bulk upload modal, load jobs for dropdown
   const openBulkModal = async () => {
     setShowBulkModal(true);
     setBulkResult(null);
@@ -86,7 +91,6 @@ const Candidates = () => {
     setBulkResult(null);
   };
 
-  // NEW: submit bulk upload
   const handleBulkUpload = async () => {
     if (!bulkJobId || !bulkFile) return;
     setBulkUploading(true);
@@ -109,7 +113,6 @@ const Candidates = () => {
     }
   };
 
-  // NEW: export candidates to excel
   const handleExport = async () => {
     setExporting(true);
     try {
@@ -140,7 +143,6 @@ const Candidates = () => {
       c.skills?.toLowerCase().includes(search.toLowerCase())
     );
 
-  // Analytics
   const stats = {
     total: candidates.length,
     selected: candidates.filter(c => c.status === 'selected').length,
@@ -176,7 +178,6 @@ const Candidates = () => {
             </p>
           </div>
 
-          {/* NEW: Bulk Upload / Export buttons */}
           <div style={{ display: 'flex', gap: '10px' }}>
             <button
               onClick={openBulkModal}
@@ -412,7 +413,7 @@ const Candidates = () => {
           </div>
         )}
 
-        {/* NEW: Bulk Upload Modal */}
+        {/* Bulk Upload Modal */}
         {showBulkModal && (
           <div
             style={{
@@ -633,8 +634,6 @@ const Candidates = () => {
           '/upload/',
           '/upload/fl_attachment/'
         )}
-        target="_blank"
-        rel="noopener noreferrer"
         style={{
           padding: '10px 16px',
           background: '#f1f5f9',
@@ -665,6 +664,89 @@ const Candidates = () => {
     </p>
   )}
 </div>
+
+                {/* NEW: AI Insights — Summary, Recommendation, Skill Gap */}
+                {(selectedCandidate.ai_summary || selectedCandidate.recommendation_label) && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <p style={{ margin: '0 0 10px', fontSize: '13px', fontWeight: '700', color: '#1e3a5f' }}>
+                      🤖 AI Insights
+                    </p>
+
+                    <div style={{
+                      background: 'linear-gradient(135deg, #f0f4ff, #f7f0ff)',
+                      border: '1px solid #e0e7ff',
+                      borderRadius: '12px',
+                      padding: '16px',
+                    }}>
+                      {/* Recommendation badge */}
+                      {selectedCandidate.recommendation_label && (
+                        <div style={{ marginBottom: '12px' }}>
+                          <span style={{
+                            padding: '5px 14px',
+                            borderRadius: '20px',
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            background: recommendationColors[selectedCandidate.recommendation_label]?.bg || '#f0f0f0',
+                            color: recommendationColors[selectedCandidate.recommendation_label]?.color || '#666',
+                          }}>
+                            ⭐ {selectedCandidate.recommendation_label}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* AI Summary */}
+                      {selectedCandidate.ai_summary && (
+                        <p style={{
+                          margin: '0 0 14px', fontSize: '13px', color: '#333',
+                          lineHeight: '1.6', fontStyle: 'italic',
+                        }}>
+                          "{selectedCandidate.ai_summary}"
+                        </p>
+                      )}
+
+                      {/* Matched / Missing skills */}
+                      {(selectedCandidate.matched_skills || selectedCandidate.missing_skills) && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                          {selectedCandidate.matched_skills && (
+                            <div>
+                              <p style={{ margin: '0 0 6px', fontSize: '11px', fontWeight: '700', color: '#166534' }}>
+                                ✅ Matched Skills
+                              </p>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                {selectedCandidate.matched_skills.split(',').map((s, i) => (
+                                  <span key={i} style={{
+                                    padding: '3px 8px', borderRadius: '10px', fontSize: '11px',
+                                    background: '#c6f6d5', color: '#166534', fontWeight: '600',
+                                  }}>
+                                    {s.trim()}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {selectedCandidate.missing_skills && (
+                            <div>
+                              <p style={{ margin: '0 0 6px', fontSize: '11px', fontWeight: '700', color: '#c53030' }}>
+                                ❌ Missing Skills
+                              </p>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                {selectedCandidate.missing_skills.split(',').map((s, i) => (
+                                  <span key={i} style={{
+                                    padding: '3px 8px', borderRadius: '10px', fontSize: '11px',
+                                    background: '#fed7d7', color: '#c53030', fontWeight: '600',
+                                  }}>
+                                    {s.trim()}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Skills */}
                 {selectedCandidate.skills && (
                   <div style={{ marginBottom: '20px' }}>
