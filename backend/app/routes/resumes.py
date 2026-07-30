@@ -1,4 +1,5 @@
 import os
+import json
 import cloudinary
 import cloudinary.uploader
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
@@ -11,7 +12,10 @@ from app.services.ai_resume import (
     extract_text_from_docx,
     extract_text_from_txt,
     parse_resume_with_ai,
-    calculate_ats_score
+    calculate_ats_score,
+    generate_candidate_summary,
+    analyze_skill_gap,
+    get_recommendation_label
 )
 from app.models.job import Job
 import uuid
@@ -23,6 +27,18 @@ cloudinary.config(
     api_key=os.getenv("CLOUDINARY_API_KEY"),
     api_secret=os.getenv("CLOUDINARY_API_SECRET")
 )
+
+
+# Auto-shortlisting: derive a pipeline status from the ATS score
+def auto_status_from_score(score: float) -> str:
+    if score >= 90:
+        return "shortlisted"
+    elif score >= 80:
+        return "under_review"
+    elif score >= 60:
+        return "screened"
+    else:
+        return "rejected"
 
 
 @router.post("/upload/{job_id}", response_model=ResumeUploadResponse)
@@ -48,6 +64,28 @@ async def upload_resume(
 
     parsed = parse_resume_with_ai(resume_text)
     ats_result = calculate_ats_score(resume_text, job.description)
+    ats_score = ats_result.get("ats_score", 0.0)
+    candidate_skills = parsed.get("skills", "")
+
+    # AI Candidate Summary
+    try:
+        ai_summary = generate_candidate_summary(resume_text, job.title)
+    except Exception as e:
+        print("Summary generation error:", e)
+        ai_summary = None
+
+    # AI Skill Gap Analysis
+    try:
+        skill_gap = analyze_skill_gap(candidate_skills, job.skills_required or "")
+        matched_skills = ", ".join(skill_gap.get("matched_skills", []))
+        missing_skills = ", ".join(skill_gap.get("missing_skills", []))
+    except Exception as e:
+        print("Skill gap analysis error:", e)
+        matched_skills = None
+        missing_skills = None
+
+    # AI Recommendation label
+    recommendation_label = get_recommendation_label(ats_score)
 
     # Upload original file to Cloudinary for view/download
     resume_url = None
@@ -64,10 +102,21 @@ async def upload_resume(
         print("Cloudinary upload error:", e)
 
     email = parsed.get("email", f"unknown_{uuid.uuid4()}@temp.com")
+    phone = parsed.get("phone", "")
+
+    # Duplicate detection: check by email OR phone
     existing = db.query(Candidate).filter(Candidate.email == email).first()
+    if not existing and phone:
+        existing = db.query(Candidate).filter(Candidate.phone == phone).first()
+
     if existing:
-        existing.ats_score = ats_result.get("ats_score", 0.0)
-        existing.skills = parsed.get("skills", "")
+        existing.ats_score = ats_score
+        existing.skills = candidate_skills
+        existing.ai_summary = ai_summary
+        existing.recommendation_label = recommendation_label
+        existing.matched_skills = matched_skills
+        existing.missing_skills = missing_skills
+        existing.status = auto_status_from_score(ats_score)
         if resume_url:
             existing.resume_url = resume_url
         db.commit()
@@ -78,15 +127,19 @@ async def upload_resume(
         id=str(uuid.uuid4()),
         full_name=parsed.get("full_name", "Unknown"),
         email=email,
-        phone=parsed.get("phone", ""),
+        phone=phone,
         job_id=job_id,
         resume_text=resume_text,
         resume_url=resume_url,
-        skills=parsed.get("skills", ""),
+        skills=candidate_skills,
         experience_years=parsed.get("experience_years", 0),
         education=parsed.get("education", ""),
-        ats_score=ats_result.get("ats_score", 0.0),
-        status="applied"
+        ats_score=ats_score,
+        ai_summary=ai_summary,
+        recommendation_label=recommendation_label,
+        matched_skills=matched_skills,
+        missing_skills=missing_skills,
+        status=auto_status_from_score(ats_score)
     )
     db.add(candidate)
     db.commit()

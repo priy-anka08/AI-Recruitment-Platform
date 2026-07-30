@@ -17,3 +17,7 @@ class Candidate(Base):
     education = Column(String(255), nullable=True)
     ats_score = Column(Float, default=0.0)
     status = Column(String(50), default="applied")
+    ai_summary = Column(Text, nullable=True)
+    recommendation_label = Column(String(50), nullable=True)
+    matched_skills = Column(Text, nullable=True)
+    missing_skills = Column(Text, nullable=True)
