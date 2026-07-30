@@ -12,7 +12,7 @@ class Candidate(Base):
     job_id = Column(String, nullable=False)
     resume_text = Column(Text, nullable=True)
     resume_url = Column(String(500), nullable=True)
-    skills = Column(String(500), nullable=True)
+    skills = Column(Text, nullable=True)
     experience_years = Column(Integer, default=0)
     education = Column(String(255), nullable=True)
     ats_score = Column(Float, default=0.0)
