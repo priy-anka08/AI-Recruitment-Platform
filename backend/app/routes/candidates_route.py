@@ -8,6 +8,7 @@ from openpyxl import Workbook
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, UploadFile, File
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 from app.database.dependencies import get_db
 from app.models.candidate import Candidate
 from app.models.job import Job
@@ -62,6 +63,48 @@ AI Recruitment Team
 @router.get("/")
 def get_all_candidates(db: Session = Depends(get_db)):
     return db.query(Candidate).order_by(Candidate.ats_score.desc()).all()
+
+
+# Manual candidate creation
+class ManualCandidateCreate(BaseModel):
+    full_name: str
+    email: str
+    phone: str = ""
+    job_id: str
+    skills: str = ""
+    experience_years: int = 0
+    education: str = ""
+
+
+@router.post("/")
+def create_candidate_manually(
+    payload: ManualCandidateCreate,
+    db: Session = Depends(get_db)
+):
+    job = db.query(Job).filter(Job.id == payload.job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    existing = db.query(Candidate).filter(Candidate.email == payload.email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Candidate with this email already exists")
+
+    candidate = Candidate(
+        id=str(uuid.uuid4()),
+        full_name=payload.full_name,
+        email=payload.email,
+        phone=payload.phone,
+        job_id=payload.job_id,
+        skills=payload.skills,
+        experience_years=payload.experience_years,
+        education=payload.education,
+        ats_score=0.0,
+        status="applied"
+    )
+    db.add(candidate)
+    db.commit()
+    db.refresh(candidate)
+    return candidate
 
 
 # Export candidates to Excel — MUST be before /{candidate_id} route
