@@ -31,6 +31,11 @@ const allStatuses = [
 
 const API_BASE = 'https://ai-recruitment-platform-backend-uukb.onrender.com';
 
+const emptyManualForm = {
+  full_name: '', email: '', phone: '', job_id: '',
+  skills: '', experience_years: 0, education: '',
+};
+
 const Candidates = () => {
   const [candidates, setCandidates] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +50,12 @@ const Candidates = () => {
   const [bulkUploading, setBulkUploading] = useState(false);
   const [bulkResult, setBulkResult] = useState(null);
   const [exporting, setExporting] = useState(false);
+
+  // NEW: manual add candidate state
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [manualForm, setManualForm] = useState(emptyManualForm);
+  const [addingCandidate, setAddingCandidate] = useState(false);
+  const [addError, setAddError] = useState('');
 
   useEffect(() => {
     fetchCandidates();
@@ -134,6 +145,43 @@ const Candidates = () => {
     }
   };
 
+  // NEW: open manual add modal, load jobs
+  const openAddModal = async () => {
+    setShowAddModal(true);
+    setManualForm(emptyManualForm);
+    setAddError('');
+    try {
+      const res = await getJobs();
+      setJobs(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const closeAddModal = () => {
+    setShowAddModal(false);
+    setAddError('');
+  };
+
+  // NEW: submit manual candidate
+  const handleAddCandidate = async () => {
+    if (!manualForm.full_name || !manualForm.email || !manualForm.job_id) {
+      setAddError('Name, Email and Job are required');
+      return;
+    }
+    setAddingCandidate(true);
+    setAddError('');
+    try {
+      await axios.post(`${API_BASE}/candidates/`, manualForm);
+      setShowAddModal(false);
+      fetchCandidates();
+    } catch (err) {
+      setAddError(err.response?.data?.detail || 'Failed to add candidate');
+    } finally {
+      setAddingCandidate(false);
+    }
+  };
+
   const filtered = candidates
     .filter(c => filter === 'all' || c.status === filter)
     .filter(c =>
@@ -179,6 +227,16 @@ const Candidates = () => {
           </div>
 
           <div style={{ display: 'flex', gap: '10px' }}>
+            <button
+              onClick={openAddModal}
+              style={{
+                padding: '10px 18px', background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                border: 'none', borderRadius: '10px',
+                color: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: '600',
+              }}
+            >
+              ➕ Add Candidate
+            </button>
             <button
               onClick={openBulkModal}
               style={{
@@ -410,6 +468,172 @@ const Candidates = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* NEW: Add Candidate Modal */}
+        {showAddModal && (
+          <div
+            style={{
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(0,0,0,0.5)', zIndex: 1100,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '20px',
+            }}
+            onClick={(e) => { if (e.target === e.currentTarget) closeAddModal(); }}
+          >
+            <div style={{
+              background: '#fff', borderRadius: '20px', width: '100%', maxWidth: '480px',
+              padding: '28px', boxShadow: '0 25px 50px rgba(0,0,0,0.3)',
+              maxHeight: '90vh', overflow: 'auto',
+            }}>
+              <h3 style={{ margin: '0 0 20px', color: '#1e3a5f' }}>➕ Add Candidate</h3>
+
+              {addError && (
+                <div style={{
+                  padding: '10px 14px', background: '#fff5f5', border: '1px solid #fed7d7',
+                  borderRadius: '8px', color: '#c53030', fontSize: '13px', marginBottom: '14px',
+                }}>
+                  ⚠️ {addError}
+                </div>
+              )}
+
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#333' }}>
+                Full Name *
+              </label>
+              <input
+                type="text"
+                value={manualForm.full_name}
+                onChange={(e) => setManualForm({ ...manualForm, full_name: e.target.value })}
+                placeholder="e.g. Rahul Sharma"
+                style={{
+                  width: '100%', padding: '10px 14px', marginBottom: '14px',
+                  border: '2px solid #e2e8f0', borderRadius: '8px', fontSize: '14px',
+                  outline: 'none', boxSizing: 'border-box',
+                }}
+              />
+
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#333' }}>
+                Email *
+              </label>
+              <input
+                type="email"
+                value={manualForm.email}
+                onChange={(e) => setManualForm({ ...manualForm, email: e.target.value })}
+                placeholder="e.g. rahul@example.com"
+                style={{
+                  width: '100%', padding: '10px 14px', marginBottom: '14px',
+                  border: '2px solid #e2e8f0', borderRadius: '8px', fontSize: '14px',
+                  outline: 'none', boxSizing: 'border-box',
+                }}
+              />
+
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#333' }}>
+                Phone
+              </label>
+              <input
+                type="text"
+                value={manualForm.phone}
+                onChange={(e) => setManualForm({ ...manualForm, phone: e.target.value })}
+                placeholder="e.g. 9876543210"
+                style={{
+                  width: '100%', padding: '10px 14px', marginBottom: '14px',
+                  border: '2px solid #e2e8f0', borderRadius: '8px', fontSize: '14px',
+                  outline: 'none', boxSizing: 'border-box',
+                }}
+              />
+
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#333' }}>
+                Job *
+              </label>
+              <select
+                value={manualForm.job_id}
+                onChange={(e) => setManualForm({ ...manualForm, job_id: e.target.value })}
+                style={{
+                  width: '100%', padding: '10px 14px', marginBottom: '14px',
+                  border: '2px solid #e2e8f0', borderRadius: '8px', fontSize: '14px', outline: 'none',
+                }}
+              >
+                <option value="">-- Choose a job --</option>
+                {jobs.map(job => (
+                  <option key={job.id} value={job.id}>{job.title}</option>
+                ))}
+              </select>
+
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#333' }}>
+                Skills (comma separated)
+              </label>
+              <input
+                type="text"
+                value={manualForm.skills}
+                onChange={(e) => setManualForm({ ...manualForm, skills: e.target.value })}
+                placeholder="e.g. Python, React, SQL"
+                style={{
+                  width: '100%', padding: '10px 14px', marginBottom: '14px',
+                  border: '2px solid #e2e8f0', borderRadius: '8px', fontSize: '14px',
+                  outline: 'none', boxSizing: 'border-box',
+                }}
+              />
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#333' }}>
+                    Experience (years)
+                  </label>
+                  <input
+                    type="number"
+                    value={manualForm.experience_years}
+                    onChange={(e) => setManualForm({ ...manualForm, experience_years: parseInt(e.target.value) || 0 })}
+                    style={{
+                      width: '100%', padding: '10px 14px',
+                      border: '2px solid #e2e8f0', borderRadius: '8px', fontSize: '14px',
+                      outline: 'none', boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#333' }}>
+                    Education
+                  </label>
+                  <input
+                    type="text"
+                    value={manualForm.education}
+                    onChange={(e) => setManualForm({ ...manualForm, education: e.target.value })}
+                    placeholder="e.g. B.Tech CSE"
+                    style={{
+                      width: '100%', padding: '10px 14px',
+                      border: '2px solid #e2e8f0', borderRadius: '8px', fontSize: '14px',
+                      outline: 'none', boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+                <button
+                  onClick={handleAddCandidate}
+                  disabled={addingCandidate}
+                  style={{
+                    flex: 1, padding: '12px', border: 'none', borderRadius: '10px',
+                    background: addingCandidate ? '#ccc' : 'linear-gradient(135deg, #667eea, #764ba2)',
+                    color: '#fff', fontWeight: '600', fontSize: '14px',
+                    cursor: addingCandidate ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {addingCandidate ? '⏳ Adding...' : '✅ Add Candidate'}
+                </button>
+                <button
+                  onClick={closeAddModal}
+                  style={{
+                    padding: '12px 20px', background: '#f1f5f9',
+                    border: '1px solid #e2e8f0', borderRadius: '10px',
+                    color: '#666', cursor: 'pointer', fontSize: '14px', fontWeight: '600',
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -665,7 +889,7 @@ const Candidates = () => {
   )}
 </div>
 
-                {/* NEW: AI Insights — Summary, Recommendation, Skill Gap */}
+                {/* AI Insights — Summary, Recommendation, Skill Gap */}
                 {(selectedCandidate.ai_summary || selectedCandidate.recommendation_label) && (
                   <div style={{ marginBottom: '20px' }}>
                     <p style={{ margin: '0 0 10px', fontSize: '13px', fontWeight: '700', color: '#1e3a5f' }}>
@@ -678,7 +902,6 @@ const Candidates = () => {
                       borderRadius: '12px',
                       padding: '16px',
                     }}>
-                      {/* Recommendation badge */}
                       {selectedCandidate.recommendation_label && (
                         <div style={{ marginBottom: '12px' }}>
                           <span style={{
@@ -694,7 +917,6 @@ const Candidates = () => {
                         </div>
                       )}
 
-                      {/* AI Summary */}
                       {selectedCandidate.ai_summary && (
                         <p style={{
                           margin: '0 0 14px', fontSize: '13px', color: '#333',
@@ -704,7 +926,6 @@ const Candidates = () => {
                         </p>
                       )}
 
-                      {/* Matched / Missing skills */}
                       {(selectedCandidate.matched_skills || selectedCandidate.missing_skills) && (
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                           {selectedCandidate.matched_skills && (
