@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from app.database.dependencies import get_db
 from app.models.candidate import Candidate
 from app.models.job import Job
+from app.services.ai_resume import generate_interview_questions
 
 router = APIRouter()
 logger = logging.getLogger("uvicorn.error")
@@ -239,6 +240,28 @@ def get_resume(candidate_id: str, db: Session = Depends(get_db)):
     if not candidate.resume_url:
         raise HTTPException(status_code=404, detail="Resume not uploaded")
     return {"resume_url": candidate.resume_url}
+
+
+# NEW: AI Interview Question Generator — on-demand, based on resume + job
+@router.get("/{candidate_id}/interview-questions")
+def get_interview_questions(candidate_id: str, db: Session = Depends(get_db)):
+    candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    if not candidate.resume_text:
+        raise HTTPException(status_code=400, detail="No resume text available for this candidate")
+
+    job = db.query(Job).filter(Job.id == candidate.job_id).first()
+    job_title = job.title if job else ""
+    job_description = job.description if job else ""
+
+    try:
+        questions = generate_interview_questions(candidate.resume_text, job_title, job_description)
+        return questions
+    except Exception as e:
+        logger.error(f"Interview question generation error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate interview questions")
 
 
 @router.put("/{candidate_id}/status")
