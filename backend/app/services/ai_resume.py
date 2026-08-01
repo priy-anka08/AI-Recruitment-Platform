@@ -75,7 +75,6 @@ def calculate_ats_score(resume_text: str, job_description: str) -> dict:
     return json.loads(text)
 
 
-# NEW: AI Candidate Summary — short professional summary for HR to skim quickly
 def generate_candidate_summary(resume_text: str, job_title: str = "") -> str:
     prompt = f"""
     Read this resume and write a short professional summary in exactly 2-3 sentences,
@@ -92,7 +91,6 @@ def generate_candidate_summary(resume_text: str, job_title: str = "") -> str:
     return response.text.strip()
 
 
-# NEW: AI Skill Gap Analysis — compares candidate skills against JD required skills
 def analyze_skill_gap(candidate_skills: str, job_skills_required: str) -> dict:
     prompt = f"""
     Compare the candidate's skills against the job's required skills.
@@ -118,7 +116,6 @@ def analyze_skill_gap(candidate_skills: str, job_skills_required: str) -> dict:
     return json.loads(text)
 
 
-# NEW: AI Recommendation label based on ATS score
 def get_recommendation_label(ats_score: float) -> str:
     if ats_score >= 90:
         return "Highly Recommended"
@@ -128,3 +125,35 @@ def get_recommendation_label(ats_score: float) -> str:
         return "Needs Review"
     else:
         return "Not Suitable"
+
+
+# NEW: AI Interview Question Generator — personalized questions based on resume + JD
+def generate_interview_questions(resume_text: str, job_title: str, job_description: str) -> dict:
+    prompt = f"""
+    You are an experienced technical interviewer. Based on this candidate's resume and the job
+    they're applying for, generate interview questions.
+
+    Return JSON only in this exact format:
+    {{
+        "technical_questions": ["question1", "question2", "question3", "question4"],
+        "behavioral_questions": ["question1", "question2", "question3"],
+        "resume_specific_questions": ["question1", "question2", "question3"]
+    }}
+
+    "technical_questions" = questions testing skills required for the role (based on job description).
+    "behavioral_questions" = general behavioral/situational questions (teamwork, conflict, leadership).
+    "resume_specific_questions" = questions that dig into specific projects, companies, or claims
+    mentioned in THIS candidate's resume (e.g. "You mentioned building X, walk me through the architecture").
+
+    Job Title: {job_title}
+    Job Description: {job_description}
+
+    Candidate Resume:
+    {resume_text}
+
+    Return only valid JSON, nothing else.
+    """
+    response = model.generate_content(prompt)
+    text = response.text.strip()
+    text = text.replace("```json", "").replace("```", "").strip()
+    return json.loads(text)
