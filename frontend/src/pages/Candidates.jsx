@@ -51,15 +51,25 @@ const Candidates = () => {
   const [bulkResult, setBulkResult] = useState(null);
   const [exporting, setExporting] = useState(false);
 
-  // NEW: manual add candidate state
   const [showAddModal, setShowAddModal] = useState(false);
   const [manualForm, setManualForm] = useState(emptyManualForm);
   const [addingCandidate, setAddingCandidate] = useState(false);
   const [addError, setAddError] = useState('');
 
+  // NEW: interview questions state
+  const [interviewQuestions, setInterviewQuestions] = useState(null);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
+  const [questionsError, setQuestionsError] = useState('');
+
   useEffect(() => {
     fetchCandidates();
   }, []);
+
+  // NEW: reset interview questions whenever a different candidate is opened/closed
+  useEffect(() => {
+    setInterviewQuestions(null);
+    setQuestionsError('');
+  }, [selectedCandidate?.id]);
 
   const fetchCandidates = async () => {
     try {
@@ -145,7 +155,6 @@ const Candidates = () => {
     }
   };
 
-  // NEW: open manual add modal, load jobs
   const openAddModal = async () => {
     setShowAddModal(true);
     setManualForm(emptyManualForm);
@@ -163,7 +172,6 @@ const Candidates = () => {
     setAddError('');
   };
 
-  // NEW: submit manual candidate
   const handleAddCandidate = async () => {
     if (!manualForm.full_name || !manualForm.email || !manualForm.job_id) {
       setAddError('Name, Email and Job are required');
@@ -179,6 +187,21 @@ const Candidates = () => {
       setAddError(err.response?.data?.detail || 'Failed to add candidate');
     } finally {
       setAddingCandidate(false);
+    }
+  };
+
+  // NEW: generate interview questions for the currently open candidate
+  const handleGenerateQuestions = async () => {
+    if (!selectedCandidate) return;
+    setLoadingQuestions(true);
+    setQuestionsError('');
+    try {
+      const res = await axios.get(`${API_BASE}/candidates/${selectedCandidate.id}/interview-questions`);
+      setInterviewQuestions(res.data);
+    } catch (err) {
+      setQuestionsError(err.response?.data?.detail || 'Failed to generate questions');
+    } finally {
+      setLoadingQuestions(false);
     }
   };
 
@@ -471,7 +494,7 @@ const Candidates = () => {
           </div>
         )}
 
-        {/* NEW: Add Candidate Modal */}
+        {/* Add Candidate Modal */}
         {showAddModal && (
           <div
             style={{
@@ -888,6 +911,62 @@ const Candidates = () => {
     </p>
   )}
 </div>
+
+                {/* NEW: Interview Questions */}
+                {selectedCandidate.resume_text && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                      <p style={{ margin: 0, fontSize: '13px', fontWeight: '700', color: '#1e3a5f' }}>
+                        🎤 Interview Questions
+                      </p>
+                      <button
+                        onClick={handleGenerateQuestions}
+                        disabled={loadingQuestions}
+                        style={{
+                          padding: '6px 14px',
+                          background: loadingQuestions ? '#ccc' : 'linear-gradient(135deg, #667eea, #764ba2)',
+                          border: 'none', borderRadius: '8px', color: '#fff',
+                          fontSize: '12px', fontWeight: '600',
+                          cursor: loadingQuestions ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        {loadingQuestions ? '⏳ Generating...' : interviewQuestions ? '🔄 Regenerate' : '✨ Generate Questions'}
+                      </button>
+                    </div>
+
+                    {questionsError && (
+                      <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#c53030' }}>⚠️ {questionsError}</p>
+                    )}
+
+                    {interviewQuestions && (
+                      <div style={{
+                        background: '#f7f8fc', border: '1px solid #e2e8f0',
+                        borderRadius: '12px', padding: '16px',
+                      }}>
+                        {[
+                          { key: 'technical_questions', label: '🧠 Technical', color: '#667eea' },
+                          { key: 'behavioral_questions', label: '🤝 Behavioral', color: '#805ad5' },
+                          { key: 'resume_specific_questions', label: '📄 Resume-Specific', color: '#ed8936' },
+                        ].map(section => (
+                          interviewQuestions[section.key]?.length > 0 && (
+                            <div key={section.key} style={{ marginBottom: '14px' }}>
+                              <p style={{ margin: '0 0 6px', fontSize: '12px', fontWeight: '700', color: section.color }}>
+                                {section.label}
+                              </p>
+                              <ol style={{ margin: 0, paddingLeft: '18px' }}>
+                                {interviewQuestions[section.key].map((q, i) => (
+                                  <li key={i} style={{ fontSize: '13px', color: '#333', marginBottom: '6px', lineHeight: '1.5' }}>
+                                    {q}
+                                  </li>
+                                ))}
+                              </ol>
+                            </div>
+                          )
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* AI Insights — Summary, Recommendation, Skill Gap */}
                 {(selectedCandidate.ai_summary || selectedCandidate.recommendation_label) && (
