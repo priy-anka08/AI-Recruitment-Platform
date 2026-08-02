@@ -12,7 +12,12 @@ from pydantic import BaseModel
 from app.database.dependencies import get_db
 from app.models.candidate import Candidate
 from app.models.job import Job
-from app.services.ai_resume import generate_interview_questions
+from app.services.ai_resume import (
+    generate_interview_questions,
+    detect_resume_fraud,
+    generate_skill_assessment,
+    semantic_rank_candidates,
+)
 
 router = APIRouter()
 logger = logging.getLogger("uvicorn.error")
@@ -152,6 +157,54 @@ def export_candidates_excel(db: Session = Depends(get_db)):
     )
 
 
+# NEW: Semantic Candidate Ranking — MUST be before /{candidate_id} route (uses /rank/ prefix, safe)
+@router.get("/rank/{job_id}")
+def get_semantic_ranking(job_id: str, db: Session = Depends(get_db)):
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    candidates = db.query(Candidate).filter(Candidate.job_id == job_id).all()
+    if not candidates:
+        raise HTTPException(status_code=404, detail="No candidates found for this job")
+
+    candidates_data = [
+        {
+            "candidate_id": c.id,
+            "candidate_name": c.full_name,
+            "skills": c.skills or "",
+            "experience_years": c.experience_years or 0,
+            "education": c.education or "",
+            "ai_summary": c.ai_summary or "",
+        }
+        for c in candidates
+    ]
+
+    try:
+        result = semantic_rank_candidates(candidates_data, job.description or "")
+        return result
+    except Exception as e:
+        logger.error(f"Semantic ranking error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate semantic ranking")
+
+
+# NEW: AI Skill Assessment Generator — MCQs based on a job's requirements
+@router.get("/assessment/{job_id}")
+def get_skill_assessment(job_id: str, db: Session = Depends(get_db)):
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    try:
+        assessment = generate_skill_assessment(
+            job.title, job.description or "", job.skills_required or ""
+        )
+        return assessment
+    except Exception as e:
+        logger.error(f"Skill assessment generation error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate skill assessment")
+
+
 # Bulk upload candidates from Excel (columns: Name, Email, Phone)
 @router.post("/bulk-upload/{job_id}")
 async def bulk_upload_candidates(
@@ -242,7 +295,7 @@ def get_resume(candidate_id: str, db: Session = Depends(get_db)):
     return {"resume_url": candidate.resume_url}
 
 
-# NEW: AI Interview Question Generator — on-demand, based on resume + job
+# AI Interview Question Generator — on-demand, based on resume + job
 @router.get("/{candidate_id}/interview-questions")
 def get_interview_questions(candidate_id: str, db: Session = Depends(get_db)):
     candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
@@ -262,6 +315,24 @@ def get_interview_questions(candidate_id: str, db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"Interview question generation error: {e}")
         raise HTTPException(status_code=500, detail="Failed to generate interview questions")
+
+
+# NEW: AI Resume Fraud Detection — on-demand, per candidate
+@router.get("/{candidate_id}/fraud-check")
+def get_fraud_check(candidate_id: str, db: Session = Depends(get_db)):
+    candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    if not candidate.resume_text:
+        raise HTTPException(status_code=400, detail="No resume text available for this candidate")
+
+    try:
+        result = detect_resume_fraud(candidate.resume_text)
+        return result
+    except Exception as e:
+        logger.error(f"Fraud detection error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to run fraud check")
 
 
 @router.put("/{candidate_id}/status")
