@@ -23,6 +23,12 @@ const recommendationColors = {
   'Not Suitable': { bg: '#fed7d7', color: '#c53030' },
 };
 
+const fraudRiskColors = {
+  'Low': { bg: '#c6f6d5', color: '#22543d' },
+  'Medium': { bg: '#feebc8', color: '#c05621' },
+  'High': { bg: '#fed7d7', color: '#c53030' },
+};
+
 const allStatuses = [
   'applied', 'under_review', 'screened', 'shortlisted',
   'interview_scheduled', 'technical_round', 'hr_round',
@@ -56,19 +62,24 @@ const Candidates = () => {
   const [addingCandidate, setAddingCandidate] = useState(false);
   const [addError, setAddError] = useState('');
 
-  // NEW: interview questions state
   const [interviewQuestions, setInterviewQuestions] = useState(null);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [questionsError, setQuestionsError] = useState('');
+
+  // NEW: fraud check state
+  const [fraudResult, setFraudResult] = useState(null);
+  const [loadingFraud, setLoadingFraud] = useState(false);
+  const [fraudError, setFraudError] = useState('');
 
   useEffect(() => {
     fetchCandidates();
   }, []);
 
-  // NEW: reset interview questions whenever a different candidate is opened/closed
   useEffect(() => {
     setInterviewQuestions(null);
     setQuestionsError('');
+    setFraudResult(null);
+    setFraudError('');
   }, [selectedCandidate?.id]);
 
   const fetchCandidates = async () => {
@@ -190,7 +201,6 @@ const Candidates = () => {
     }
   };
 
-  // NEW: generate interview questions for the currently open candidate
   const handleGenerateQuestions = async () => {
     if (!selectedCandidate) return;
     setLoadingQuestions(true);
@@ -202,6 +212,21 @@ const Candidates = () => {
       setQuestionsError(err.response?.data?.detail || 'Failed to generate questions');
     } finally {
       setLoadingQuestions(false);
+    }
+  };
+
+  // NEW: run fraud check for the currently open candidate
+  const handleFraudCheck = async () => {
+    if (!selectedCandidate) return;
+    setLoadingFraud(true);
+    setFraudError('');
+    try {
+      const res = await axios.get(`${API_BASE}/candidates/${selectedCandidate.id}/fraud-check`);
+      setFraudResult(res.data);
+    } catch (err) {
+      setFraudError(err.response?.data?.detail || 'Failed to run fraud check');
+    } finally {
+      setLoadingFraud(false);
     }
   };
 
@@ -912,7 +937,7 @@ const Candidates = () => {
   )}
 </div>
 
-                {/* NEW: Interview Questions */}
+                {/* Interview Questions */}
                 {selectedCandidate.resume_text && (
                   <div style={{ marginBottom: '20px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
@@ -963,6 +988,70 @@ const Candidates = () => {
                             </div>
                           )
                         ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* NEW: Fraud Check */}
+                {selectedCandidate.resume_text && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                      <p style={{ margin: 0, fontSize: '13px', fontWeight: '700', color: '#1e3a5f' }}>
+                        🔍 Resume Authenticity Check
+                      </p>
+                      <button
+                        onClick={handleFraudCheck}
+                        disabled={loadingFraud}
+                        style={{
+                          padding: '6px 14px',
+                          background: loadingFraud ? '#ccc' : 'linear-gradient(135deg, #ed8936, #dd6b20)',
+                          border: 'none', borderRadius: '8px', color: '#fff',
+                          fontSize: '12px', fontWeight: '600',
+                          cursor: loadingFraud ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        {loadingFraud ? '⏳ Checking...' : fraudResult ? '🔄 Re-check' : '🔍 Run Check'}
+                      </button>
+                    </div>
+
+                    {fraudError && (
+                      <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#c53030' }}>⚠️ {fraudError}</p>
+                    )}
+
+                    {fraudResult && (
+                      <div style={{
+                        background: '#f7f8fc', border: '1px solid #e2e8f0',
+                        borderRadius: '12px', padding: '16px',
+                      }}>
+                        <div style={{ marginBottom: '10px' }}>
+                          <span style={{
+                            padding: '5px 14px',
+                            borderRadius: '20px',
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            background: fraudRiskColors[fraudResult.risk_level]?.bg || '#f0f0f0',
+                            color: fraudRiskColors[fraudResult.risk_level]?.color || '#666',
+                          }}>
+                            {fraudResult.risk_level === 'Low' ? '✅' : fraudResult.risk_level === 'Medium' ? '⚠️' : '🚨'} {fraudResult.risk_level} Risk
+                          </span>
+                        </div>
+
+                        {fraudResult.notes && (
+                          <p style={{ margin: '0 0 10px', fontSize: '13px', color: '#333', lineHeight: '1.5' }}>
+                            {fraudResult.notes}
+                          </p>
+                        )}
+
+                        {fraudResult.red_flags?.length > 0 && (
+                          <ul style={{ margin: 0, paddingLeft: '18px' }}>
+                            {fraudResult.red_flags.map((flag, i) => (
+                              <li key={i} style={{ fontSize: '13px', color: '#c53030', marginBottom: '6px', lineHeight: '1.5' }}>
+                                {flag}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
                       </div>
                     )}
                   </div>
