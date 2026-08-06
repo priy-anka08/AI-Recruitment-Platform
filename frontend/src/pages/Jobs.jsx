@@ -4,6 +4,8 @@ import axios from 'axios';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 
+const API_BASE = 'https://ai-recruitment-platform-backend-uukb.onrender.com';
+
 const Jobs = () => {
   const { token } = useAuth();
   const [jobs, setJobs] = useState([]);
@@ -22,10 +24,20 @@ const Jobs = () => {
     job_type: 'full-time',
   });
 
-  // NEW: state for job detail modal
   const [selectedJob, setSelectedJob] = useState(null);
   const [jobCandidates, setJobCandidates] = useState([]);
   const [loadingCandidates, setLoadingCandidates] = useState(false);
+
+  // NEW: skill assessment state
+  const [assessment, setAssessment] = useState(null);
+  const [loadingAssessment, setLoadingAssessment] = useState(false);
+  const [assessmentError, setAssessmentError] = useState('');
+  const [showAnswers, setShowAnswers] = useState(false);
+
+  // NEW: semantic ranking state
+  const [semanticRanking, setSemanticRanking] = useState(null);
+  const [loadingRanking, setLoadingRanking] = useState(false);
+  const [rankingError, setRankingError] = useState('');
 
   useEffect(() => {
     fetchJobs();
@@ -79,7 +91,7 @@ const Jobs = () => {
     e.preventDefault();
     try {
       if (editingJob) {
-        await axios.put(`https://ai-recruitment-platform-backend-uukb.onrender.com/jobs/${editingJob.id}`, formData, {
+        await axios.put(`${API_BASE}/jobs/${editingJob.id}`, formData, {
           headers: { Authorization: `Bearer ${token}` },
         });
       } else {
@@ -104,7 +116,7 @@ const Jobs = () => {
 
   const handleToggleStatus = async (id) => {
     try {
-      await axios.patch(`https://ai-recruitment-platform-backend-uukb.onrender.com/jobs/${id}/status`, {}, {
+      await axios.patch(`${API_BASE}/jobs/${id}/status`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
       fetchJobs();
@@ -113,14 +125,17 @@ const Jobs = () => {
     }
   };
 
-  // NEW: open job detail modal + fetch its applicants sorted by match score
   const handleViewDetails = async (job) => {
     setSelectedJob(job);
     setLoadingCandidates(true);
+    // reset AI feature state for the newly opened job
+    setAssessment(null);
+    setAssessmentError('');
+    setShowAnswers(false);
+    setSemanticRanking(null);
+    setRankingError('');
     try {
-      const res = await axios.get(
-        `https://ai-recruitment-platform-backend-uukb.onrender.com/resumes/candidates/${job.id}`
-      );
+      const res = await axios.get(`${API_BASE}/resumes/candidates/${job.id}`);
       setJobCandidates(res.data);
     } catch (err) {
       console.error(err);
@@ -133,6 +148,37 @@ const Jobs = () => {
   const closeDetails = () => {
     setSelectedJob(null);
     setJobCandidates([]);
+  };
+
+  // NEW: generate skill assessment MCQs for this job
+  const handleGenerateAssessment = async () => {
+    if (!selectedJob) return;
+    setLoadingAssessment(true);
+    setAssessmentError('');
+    setShowAnswers(false);
+    try {
+      const res = await axios.get(`${API_BASE}/candidates/assessment/${selectedJob.id}`);
+      setAssessment(res.data);
+    } catch (err) {
+      setAssessmentError(err.response?.data?.detail || 'Failed to generate assessment');
+    } finally {
+      setLoadingAssessment(false);
+    }
+  };
+
+  // NEW: generate semantic ranking for this job's applicants
+  const handleGenerateRanking = async () => {
+    if (!selectedJob) return;
+    setLoadingRanking(true);
+    setRankingError('');
+    try {
+      const res = await axios.get(`${API_BASE}/candidates/rank/${selectedJob.id}`);
+      setSemanticRanking(res.data);
+    } catch (err) {
+      setRankingError(err.response?.data?.detail || 'Failed to generate semantic ranking');
+    } finally {
+      setLoadingRanking(false);
+    }
   };
 
   const getScoreColor = (score) => {
@@ -479,7 +525,7 @@ const Jobs = () => {
           </div>
         )}
 
-        {/* NEW: Job Detail Modal — full description + applicants sorted by match score */}
+        {/* Job Detail Modal — full description + applicants sorted by match score */}
         {selectedJob && (
           <div
             style={{
@@ -551,6 +597,135 @@ const Jobs = () => {
                       {selectedJob.skills_required}
                     </p>
                   </div>
+                </div>
+
+                {/* NEW: Skill Assessment Generator */}
+                <div style={{ marginBottom: '24px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <p style={{ margin: 0, fontSize: '13px', fontWeight: '700', color: '#1e3a5f' }}>
+                      🧠 Skill Assessment (MCQ Quiz)
+                    </p>
+                    <button
+                      onClick={handleGenerateAssessment}
+                      disabled={loadingAssessment}
+                      style={{
+                        padding: '6px 14px',
+                        background: loadingAssessment ? '#ccc' : 'linear-gradient(135deg, #38b2ac, #319795)',
+                        border: 'none', borderRadius: '8px', color: '#fff',
+                        fontSize: '12px', fontWeight: '600',
+                        cursor: loadingAssessment ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      {loadingAssessment ? '⏳ Generating...' : assessment ? '🔄 Regenerate' : '✨ Generate Quiz'}
+                    </button>
+                  </div>
+
+                  {assessmentError && (
+                    <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#c53030' }}>⚠️ {assessmentError}</p>
+                  )}
+
+                  {assessment && (
+                    <div style={{
+                      background: '#f7f8fc', border: '1px solid #e2e8f0',
+                      borderRadius: '12px', padding: '16px',
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
+                        <button
+                          onClick={() => setShowAnswers(!showAnswers)}
+                          style={{
+                            padding: '4px 10px', background: '#fff', border: '1px solid #e2e8f0',
+                            borderRadius: '6px', fontSize: '11px', fontWeight: '600',
+                            color: '#666', cursor: 'pointer',
+                          }}
+                        >
+                          {showAnswers ? '🙈 Hide Answers' : '👁️ Show Answers'}
+                        </button>
+                      </div>
+                      {assessment.questions?.map((q, i) => (
+                        <div key={i} style={{
+                          marginBottom: '16px', paddingBottom: '16px',
+                          borderBottom: i < assessment.questions.length - 1 ? '1px solid #e2e8f0' : 'none',
+                        }}>
+                          <p style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: '600', color: '#1e3a5f' }}>
+                            {i + 1}. {q.question}
+                            <span style={{
+                              marginLeft: '8px', fontSize: '10px', fontWeight: '600',
+                              color: '#38b2ac', background: '#e6fffa', padding: '2px 8px', borderRadius: '10px',
+                            }}>
+                              {q.skill_tested}
+                            </span>
+                          </p>
+                          <div style={{ display: 'grid', gap: '6px' }}>
+                            {q.options?.map((opt, j) => (
+                              <div key={j} style={{
+                                padding: '8px 12px', borderRadius: '8px', fontSize: '13px',
+                                background: showAnswers && opt === q.correct_answer ? '#c6f6d5' : '#fff',
+                                border: `1px solid ${showAnswers && opt === q.correct_answer ? '#48bb78' : '#e2e8f0'}`,
+                                color: showAnswers && opt === q.correct_answer ? '#166534' : '#333',
+                              }}>
+                                {opt} {showAnswers && opt === q.correct_answer && '✓'}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* NEW: Semantic Ranking */}
+                <div style={{ marginBottom: '24px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <p style={{ margin: 0, fontSize: '13px', fontWeight: '700', color: '#1e3a5f' }}>
+                      🎯 Semantic Candidate Ranking
+                    </p>
+                    <button
+                      onClick={handleGenerateRanking}
+                      disabled={loadingRanking}
+                      style={{
+                        padding: '6px 14px',
+                        background: loadingRanking ? '#ccc' : 'linear-gradient(135deg, #9f7aea, #805ad5)',
+                        border: 'none', borderRadius: '8px', color: '#fff',
+                        fontSize: '12px', fontWeight: '600',
+                        cursor: loadingRanking ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      {loadingRanking ? '⏳ Ranking...' : semanticRanking ? '🔄 Re-rank' : '✨ Rank Candidates'}
+                    </button>
+                  </div>
+
+                  {rankingError && (
+                    <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#c53030' }}>⚠️ {rankingError}</p>
+                  )}
+
+                  {semanticRanking && (
+                    <div style={{ display: 'grid', gap: '8px' }}>
+                      {semanticRanking.ranked_candidates?.map((c) => (
+                        <div key={c.candidate_id} style={{
+                          display: 'flex', alignItems: 'flex-start', gap: '12px',
+                          padding: '12px 16px', background: '#f7f0ff', borderRadius: '10px',
+                          border: '1px solid #e9d8fd',
+                        }}>
+                          <div style={{
+                            width: '28px', height: '28px', borderRadius: '50%',
+                            background: '#9f7aea', color: '#fff',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '13px', fontWeight: '700', flexShrink: 0,
+                          }}>
+                            {c.semantic_rank}
+                          </div>
+                          <div>
+                            <p style={{ margin: '0 0 4px', fontSize: '13px', fontWeight: '700', color: '#1e3a5f' }}>
+                              {c.candidate_name}
+                            </p>
+                            <p style={{ margin: 0, fontSize: '12px', color: '#666', lineHeight: '1.4' }}>
+                              {c.reasoning}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Applicants sorted by JD match */}
