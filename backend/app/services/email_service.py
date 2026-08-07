@@ -198,3 +198,79 @@ async def send_slot_selection_email(
     </div>
     """
     _send_via_brevo(email, candidate_name, f"Select Your Interview Slot — {interview_type.title()} Round | B2World", html)
+
+
+# Status-based auto emails: Rejected -> Thank you, Hold/Under Review -> Application under review,
+# Shortlisted/Selected -> Moving forward
+REJECTED_STATUSES = {"rejected"}
+HOLD_STATUSES = {"applied", "under_review", "screened"}
+ADVANCED_STATUSES = {"shortlisted", "interview_scheduled", "technical_round", "hr_round", "selected", "joined"}
+
+
+async def send_application_status_email(email: EmailStr, candidate_name: str, status: str):
+    status_key = (status or "").lower()
+
+    if status_key in REJECTED_STATUSES:
+        subject = "Update on Your Application | B2World"
+        html = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #1e3a5f, #2c5364); padding: 24px; border-radius: 12px 12px 0 0;">
+                <h1 style="color: #fff; margin: 0; font-size: 24px;">🤖 B2World AI Recruitment</h1>
+            </div>
+            <div style="background: #fff; padding: 28px; border-radius: 0 0 12px 12px; border: 1px solid #e2e8f0;">
+                <h2 style="color: #1e3a5f;">Thank You for Applying</h2>
+                <p>Dear <strong>{candidate_name}</strong>,</p>
+                <p>Thank you for taking the time to apply and for your interest in joining our team.</p>
+                <p>After careful review, we have decided to move forward with other candidates whose
+                profile more closely matches this role at this time. This is not a reflection of your
+                skills or experience.</p>
+                <p>We encourage you to apply for future openings that match your profile. We wish you
+                the very best in your job search.</p>
+                <br>
+                <p>Regards,</p>
+                <p>— <strong>B2World AI Recruitment Team</strong></p>
+            </div>
+        </div>
+        """
+    elif status_key in ADVANCED_STATUSES:
+        subject = "Good News — Your Application is Moving Forward | B2World"
+        html = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #1e3a5f, #2c5364); padding: 24px; border-radius: 12px 12px 0 0;">
+                <h1 style="color: #fff; margin: 0; font-size: 24px;">🤖 B2World AI Recruitment</h1>
+            </div>
+            <div style="background: #fff; padding: 28px; border-radius: 0 0 12px 12px; border: 1px solid #e2e8f0;">
+                <h2 style="color: #1e3a5f;">Congratulations, {candidate_name}! 🎉</h2>
+                <p>We're pleased to let you know that your application has been shortlisted and is
+                moving forward in our hiring process.</p>
+                <p>Our team will reach out shortly with the next steps, including interview scheduling
+                details.</p>
+                <br>
+                <p>Best of luck! 🍀</p>
+                <p>— <strong>B2World AI Recruitment Team</strong></p>
+            </div>
+        </div>
+        """
+    else:
+        # Hold / under review / screened / applied — default "application under review"
+        subject = "Your Application is Under Review | B2World"
+        html = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #1e3a5f, #2c5364); padding: 24px; border-radius: 12px 12px 0 0;">
+                <h1 style="color: #fff; margin: 0; font-size: 24px;">🤖 B2World AI Recruitment</h1>
+            </div>
+            <div style="background: #fff; padding: 28px; border-radius: 0 0 12px 12px; border: 1px solid #e2e8f0;">
+                <h2 style="color: #1e3a5f;">Application Under Review</h2>
+                <p>Dear <strong>{candidate_name}</strong>,</p>
+                <p>Thank you for applying. Your application has been received and is currently
+                <strong>under review</strong> by our hiring team.</p>
+                <p>We will get back to you as soon as a decision has been made. No action is needed
+                from your side at this time.</p>
+                <br>
+                <p>Regards,</p>
+                <p>— <strong>B2World AI Recruitment Team</strong></p>
+            </div>
+        </div>
+        """
+
+    _send_via_brevo(email, candidate_name, subject, html)

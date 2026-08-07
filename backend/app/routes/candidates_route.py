@@ -18,52 +18,10 @@ from app.services.ai_resume import (
     generate_skill_assessment,
     semantic_rank_candidates,
 )
+from app.services.email_service import send_application_status_email
 
 router = APIRouter()
 logger = logging.getLogger("uvicorn.error")
-
-
-def send_status_email(candidate_email, candidate_name, new_status):
-    try:
-        api_key = os.getenv("BREVO_API_KEY")
-
-        logger.info(f"Attempting to send email to {candidate_email} via Brevo")
-
-        url = "https://api.brevo.com/v3/smtp/email"
-        headers = {
-            "accept": "application/json",
-            "api-key": api_key,
-            "content-type": "application/json"
-        }
-        payload = {
-            "sender": {
-                "name": "Sneha Mittal",
-                "email": "snehamittle15@gmail.com"
-            },
-            "to": [{"email": candidate_email, "name": candidate_name}],
-            "subject": "Application Status Updated",
-            "textContent": f"""Dear {candidate_name},
-
-Your application status has been updated.
-
-Current Status: {new_status.upper()}
-
-Thank you for your interest in our recruitment process.
-
-Regards,
-AI Recruitment Team
-"""
-        }
-
-        response = requests.post(url, json=payload, headers=headers, timeout=10)
-
-        if response.status_code in (200, 201):
-            logger.info("Email sent successfully via Brevo")
-        else:
-            logger.error(f"Brevo Error: {response.status_code} - {response.text}")
-
-    except Exception as e:
-        logger.error(f"Email Error: {e}")
 
 
 @router.get("/")
@@ -360,7 +318,7 @@ def update_status(
     db.refresh(candidate)
 
     background_tasks.add_task(
-        send_status_email,
+        send_application_status_email,
         candidate.email,
         candidate.full_name,
         status

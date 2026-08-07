@@ -2,11 +2,12 @@ import os
 import json
 import cloudinary
 import cloudinary.uploader
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks
 from sqlalchemy.orm import Session
 from app.database.dependencies import get_db
 from app.models.candidate import Candidate
 from app.schemas.resume_schema import ResumeUploadResponse, ATSScoreResponse
+from app.services.email_service import send_application_status_email
 from app.services.ai_resume import (
     extract_text_from_pdf,
     extract_text_from_docx,
@@ -44,6 +45,7 @@ def auto_status_from_score(score: float) -> str:
 @router.post("/upload/{job_id}", response_model=ResumeUploadResponse)
 async def upload_resume(
     job_id: str,
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     portfolio_url: str = Form(None),
     linkedin_url: str = Form(None),
@@ -133,6 +135,12 @@ async def upload_resume(
             existing.cover_letter = cover_letter
         db.commit()
         db.refresh(existing)
+        background_tasks.add_task(
+            send_application_status_email,
+            existing.email,
+            existing.full_name,
+            existing.status
+        )
         return existing
 
     candidate = Candidate(
@@ -160,6 +168,12 @@ async def upload_resume(
     db.add(candidate)
     db.commit()
     db.refresh(candidate)
+    background_tasks.add_task(
+        send_application_status_email,
+        candidate.email,
+        candidate.full_name,
+        candidate.status
+    )
     return candidate
 
 
