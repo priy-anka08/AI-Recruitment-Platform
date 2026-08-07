@@ -284,3 +284,73 @@ def semantic_rank_candidates(candidates_data: list, job_description: str) -> dic
     text = response.text.strip()
     text = text.replace("```json", "").replace("```", "").strip()
     return json.loads(text)
+
+
+# NEW: AI Offer Recommendation — suggests a salary offer based on skills, experience, and job's budget
+def generate_offer_recommendation(candidate_data: dict, job_data: dict) -> dict:
+    prompt = f"""
+    You are an HR compensation advisor. Recommend a fair salary offer for this candidate
+    based on their skills, experience, ATS match score, and the job's budgeted salary range.
+
+    Candidate:
+    - Name: {candidate_data.get('full_name', '')}
+    - Skills: {candidate_data.get('skills', '')}
+    - Experience: {candidate_data.get('experience_years', 0)} years
+    - Education: {candidate_data.get('education', '')}
+    - ATS Score: {candidate_data.get('ats_score', 0)}
+
+    Job:
+    - Title: {job_data.get('title', '')}
+    - Required Skills: {job_data.get('skills_required', '')}
+    - Experience Range: {job_data.get('experience_min', 0)}-{job_data.get('experience_max', 0)} years
+    - Budgeted Salary Range: {job_data.get('salary_min', 0)} - {job_data.get('salary_max', 0)}
+
+    Return JSON only in this exact format:
+    {{
+        "recommended_salary": number,
+        "salary_range_low": number,
+        "salary_range_high": number,
+        "confidence_level": "High" or "Medium" or "Low",
+        "reasoning": "2-3 sentence explanation for this recommendation"
+    }}
+
+    Keep the recommendation within or close to the job's budgeted range unless the candidate's
+    profile strongly justifies going above it. Return only valid JSON, nothing else.
+    """
+    response = model.generate_content(prompt)
+    text = response.text.strip()
+    text = text.replace("```json", "").replace("```", "").strip()
+    return json.loads(text)
+
+
+# NEW: AI Candidate Pipeline Prediction — estimates likelihood of interview success / offer acceptance
+def predict_pipeline_success(candidate_data: dict) -> dict:
+    prompt = f"""
+    You are predicting hiring pipeline outcomes for a candidate based on their profile so far.
+
+    Candidate:
+    - Name: {candidate_data.get('full_name', '')}
+    - Current Status: {candidate_data.get('status', '')}
+    - ATS Score: {candidate_data.get('ats_score', 0)}
+    - Skills: {candidate_data.get('skills', '')}
+    - Matched Skills: {candidate_data.get('matched_skills', '')}
+    - Missing Skills: {candidate_data.get('missing_skills', '')}
+    - Experience: {candidate_data.get('experience_years', 0)} years
+    - AI Recommendation Label: {candidate_data.get('recommendation_label', '')}
+
+    Return JSON only in this exact format:
+    {{
+        "interview_success_probability": number between 0-100,
+        "offer_acceptance_probability": number between 0-100,
+        "overall_hire_likelihood": "High" or "Medium" or "Low",
+        "key_strengths": ["short phrase", "short phrase"],
+        "risk_factors": ["short phrase", "short phrase"],
+        "reasoning": "2-3 sentence explanation"
+    }}
+
+    Base predictions on the data given, not assumptions outside it. Return only valid JSON, nothing else.
+    """
+    response = model.generate_content(prompt)
+    text = response.text.strip()
+    text = text.replace("```json", "").replace("```", "").strip()
+    return json.loads(text)

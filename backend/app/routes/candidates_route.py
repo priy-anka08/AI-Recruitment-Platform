@@ -17,6 +17,8 @@ from app.services.ai_resume import (
     detect_resume_fraud,
     generate_skill_assessment,
     semantic_rank_candidates,
+    generate_offer_recommendation,
+    predict_pipeline_success,
 )
 from app.services.email_service import send_application_status_email
 
@@ -291,6 +293,67 @@ def get_fraud_check(candidate_id: str, db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"Fraud detection error: {e}")
         raise HTTPException(status_code=500, detail="Failed to run fraud check")
+
+
+# NEW: AI Offer Recommendation — suggests a salary offer based on candidate profile + job budget
+@router.get("/{candidate_id}/offer-recommendation")
+def get_offer_recommendation(candidate_id: str, db: Session = Depends(get_db)):
+    candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    job = db.query(Job).filter(Job.id == candidate.job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found for this candidate")
+
+    candidate_data = {
+        "full_name": candidate.full_name,
+        "skills": candidate.skills or "",
+        "experience_years": candidate.experience_years or 0,
+        "education": candidate.education or "",
+        "ats_score": candidate.ats_score or 0,
+    }
+    job_data = {
+        "title": job.title,
+        "skills_required": job.skills_required or "",
+        "experience_min": job.experience_min or 0,
+        "experience_max": job.experience_max or 0,
+        "salary_min": job.salary_min or 0,
+        "salary_max": job.salary_max or 0,
+    }
+
+    try:
+        result = generate_offer_recommendation(candidate_data, job_data)
+        return result
+    except Exception as e:
+        logger.error(f"Offer recommendation error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate offer recommendation")
+
+
+# NEW: AI Candidate Pipeline Prediction — estimates interview success / offer acceptance likelihood
+@router.get("/{candidate_id}/pipeline-prediction")
+def get_pipeline_prediction(candidate_id: str, db: Session = Depends(get_db)):
+    candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    candidate_data = {
+        "full_name": candidate.full_name,
+        "status": candidate.status or "",
+        "ats_score": candidate.ats_score or 0,
+        "skills": candidate.skills or "",
+        "matched_skills": candidate.matched_skills or "",
+        "missing_skills": candidate.missing_skills or "",
+        "experience_years": candidate.experience_years or 0,
+        "recommendation_label": candidate.recommendation_label or "",
+    }
+
+    try:
+        result = predict_pipeline_success(candidate_data)
+        return result
+    except Exception as e:
+        logger.error(f"Pipeline prediction error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate pipeline prediction")
 
 
 @router.put("/{candidate_id}/status")

@@ -71,6 +71,16 @@ const Candidates = () => {
   const [loadingFraud, setLoadingFraud] = useState(false);
   const [fraudError, setFraudError] = useState('');
 
+  // NEW: offer recommendation state
+  const [offerResult, setOfferResult] = useState(null);
+  const [loadingOffer, setLoadingOffer] = useState(false);
+  const [offerError, setOfferError] = useState('');
+
+  // NEW: pipeline prediction state
+  const [pipelineResult, setPipelineResult] = useState(null);
+  const [loadingPipeline, setLoadingPipeline] = useState(false);
+  const [pipelineError, setPipelineError] = useState('');
+
   useEffect(() => {
     fetchCandidates();
   }, []);
@@ -80,6 +90,10 @@ const Candidates = () => {
     setQuestionsError('');
     setFraudResult(null);
     setFraudError('');
+    setOfferResult(null);
+    setOfferError('');
+    setPipelineResult(null);
+    setPipelineError('');
   }, [selectedCandidate?.id]);
 
   const fetchCandidates = async () => {
@@ -227,6 +241,36 @@ const Candidates = () => {
       setFraudError(err.response?.data?.detail || 'Failed to run fraud check');
     } finally {
       setLoadingFraud(false);
+    }
+  };
+
+  // NEW: run offer recommendation for the currently open candidate
+  const handleOfferRecommendation = async () => {
+    if (!selectedCandidate) return;
+    setLoadingOffer(true);
+    setOfferError('');
+    try {
+      const res = await axios.get(`${API_BASE}/candidates/${selectedCandidate.id}/offer-recommendation`);
+      setOfferResult(res.data);
+    } catch (err) {
+      setOfferError(err.response?.data?.detail || 'Failed to generate offer recommendation');
+    } finally {
+      setLoadingOffer(false);
+    }
+  };
+
+  // NEW: run pipeline prediction for the currently open candidate
+  const handlePipelinePrediction = async () => {
+    if (!selectedCandidate) return;
+    setLoadingPipeline(true);
+    setPipelineError('');
+    try {
+      const res = await axios.get(`${API_BASE}/candidates/${selectedCandidate.id}/pipeline-prediction`);
+      setPipelineResult(res.data);
+    } catch (err) {
+      setPipelineError(err.response?.data?.detail || 'Failed to generate pipeline prediction');
+    } finally {
+      setLoadingPipeline(false);
     }
   };
 
@@ -1056,6 +1100,164 @@ const Candidates = () => {
                     )}
                   </div>
                 )}
+
+                {/* NEW: AI Offer Recommendation */}
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <p style={{ margin: 0, fontSize: '13px', fontWeight: '700', color: '#1e3a5f' }}>
+                      💰 AI Offer Recommendation
+                    </p>
+                    <button
+                      onClick={handleOfferRecommendation}
+                      disabled={loadingOffer}
+                      style={{
+                        padding: '6px 14px',
+                        background: loadingOffer ? '#ccc' : 'linear-gradient(135deg, #38a169, #2f855a)',
+                        border: 'none', borderRadius: '8px', color: '#fff',
+                        fontSize: '12px', fontWeight: '600',
+                        cursor: loadingOffer ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      {loadingOffer ? '⏳ Calculating...' : offerResult ? '🔄 Re-calculate' : '💰 Get Recommendation'}
+                    </button>
+                  </div>
+
+                  {offerError && (
+                    <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#c53030' }}>⚠️ {offerError}</p>
+                  )}
+
+                  {offerResult && (
+                    <div style={{
+                      background: '#f0fff4', border: '1px solid #c6f6d5',
+                      borderRadius: '12px', padding: '16px',
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                        <span style={{ fontSize: '13px', color: '#666' }}>Recommended Salary</span>
+                        <span style={{ fontSize: '18px', fontWeight: '800', color: '#276749' }}>
+                          ₹{Number(offerResult.recommended_salary || 0).toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                        <span style={{ fontSize: '12px', color: '#666' }}>Suggested Range</span>
+                        <span style={{ fontSize: '13px', fontWeight: '600', color: '#333' }}>
+                          ₹{Number(offerResult.salary_range_low || 0).toLocaleString('en-IN')} – ₹{Number(offerResult.salary_range_high || 0).toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                      {offerResult.confidence_level && (
+                        <div style={{ marginBottom: '10px' }}>
+                          <span style={{
+                            padding: '4px 12px', borderRadius: '20px',
+                            fontSize: '11px', fontWeight: '700',
+                            background: '#c6f6d5', color: '#276749',
+                          }}>
+                            Confidence: {offerResult.confidence_level}
+                          </span>
+                        </div>
+                      )}
+                      {offerResult.reasoning && (
+                        <p style={{ margin: 0, fontSize: '13px', color: '#333', lineHeight: '1.5' }}>
+                          {offerResult.reasoning}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* NEW: AI Candidate Pipeline Prediction */}
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <p style={{ margin: 0, fontSize: '13px', fontWeight: '700', color: '#1e3a5f' }}>
+                      📈 AI Pipeline Prediction
+                    </p>
+                    <button
+                      onClick={handlePipelinePrediction}
+                      disabled={loadingPipeline}
+                      style={{
+                        padding: '6px 14px',
+                        background: loadingPipeline ? '#ccc' : 'linear-gradient(135deg, #667eea, #764ba2)',
+                        border: 'none', borderRadius: '8px', color: '#fff',
+                        fontSize: '12px', fontWeight: '600',
+                        cursor: loadingPipeline ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      {loadingPipeline ? '⏳ Predicting...' : pipelineResult ? '🔄 Re-predict' : '📈 Predict Outcome'}
+                    </button>
+                  </div>
+
+                  {pipelineError && (
+                    <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#c53030' }}>⚠️ {pipelineError}</p>
+                  )}
+
+                  {pipelineResult && (
+                    <div style={{
+                      background: '#f7f8ff', border: '1px solid #e0e7ff',
+                      borderRadius: '12px', padding: '16px',
+                    }}>
+                      <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
+                        <div style={{ flex: 1, textAlign: 'center', background: '#fff', borderRadius: '10px', padding: '10px' }}>
+                          <p style={{ margin: '0 0 4px', fontSize: '11px', color: '#666' }}>Interview Success</p>
+                          <p style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#667eea' }}>
+                            {pipelineResult.interview_success_probability}%
+                          </p>
+                        </div>
+                        <div style={{ flex: 1, textAlign: 'center', background: '#fff', borderRadius: '10px', padding: '10px' }}>
+                          <p style={{ margin: '0 0 4px', fontSize: '11px', color: '#666' }}>Offer Acceptance</p>
+                          <p style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#667eea' }}>
+                            {pipelineResult.offer_acceptance_probability}%
+                          </p>
+                        </div>
+                      </div>
+
+                      {pipelineResult.overall_hire_likelihood && (
+                        <div style={{ marginBottom: '10px' }}>
+                          <span style={{
+                            padding: '4px 12px', borderRadius: '20px',
+                            fontSize: '11px', fontWeight: '700',
+                            background: '#e0e7ff', color: '#4c51bf',
+                          }}>
+                            Overall Likelihood: {pipelineResult.overall_hire_likelihood}
+                          </span>
+                        </div>
+                      )}
+
+                      {pipelineResult.key_strengths?.length > 0 && (
+                        <div style={{ marginBottom: '10px' }}>
+                          <p style={{ margin: '0 0 6px', fontSize: '12px', fontWeight: '600', color: '#276749' }}>✅ Strengths</p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                            {pipelineResult.key_strengths.map((s, i) => (
+                              <span key={i} style={{
+                                padding: '3px 10px', borderRadius: '12px',
+                                background: '#c6f6d5', color: '#276749',
+                                fontSize: '11px', fontWeight: '600',
+                              }}>{s}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {pipelineResult.risk_factors?.length > 0 && (
+                        <div style={{ marginBottom: '10px' }}>
+                          <p style={{ margin: '0 0 6px', fontSize: '12px', fontWeight: '600', color: '#c53030' }}>⚠️ Risk Factors</p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                            {pipelineResult.risk_factors.map((r, i) => (
+                              <span key={i} style={{
+                                padding: '3px 10px', borderRadius: '12px',
+                                background: '#fed7d7', color: '#c53030',
+                                fontSize: '11px', fontWeight: '600',
+                              }}>{r}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {pipelineResult.reasoning && (
+                        <p style={{ margin: 0, fontSize: '13px', color: '#333', lineHeight: '1.5' }}>
+                          {pipelineResult.reasoning}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
 
                 {/* AI Insights — Summary, Recommendation, Skill Gap */}
                 {(selectedCandidate.ai_summary || selectedCandidate.recommendation_label) && (
