@@ -10,6 +10,10 @@ class ResumeUploadResponse(BaseModel):
     education: Optional[str]
     ats_score: float
     status: str
+    portfolio_url: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    github_url: Optional[str] = None
+    cover_letter: Optional[str] = None
 
     class Config:
         from_attributes = True

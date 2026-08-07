@@ -6,6 +6,10 @@ const ResumeUpload = () => {
   const [jobs, setJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState('');
   const [file, setFile] = useState(null);
+  const [portfolioUrl, setPortfolioUrl] = useState('');
+  const [linkedinUrl, setLinkedinUrl] = useState('');
+  const [githubUrl, setGithubUrl] = useState('');
+  const [coverLetter, setCoverLetter] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [candidates, setCandidates] = useState([]);
@@ -50,6 +54,10 @@ const ResumeUpload = () => {
     try {
       const formData = new FormData();
       formData.append('file', file);
+      if (portfolioUrl) formData.append('portfolio_url', portfolioUrl);
+      if (linkedinUrl) formData.append('linkedin_url', linkedinUrl);
+      if (githubUrl) formData.append('github_url', githubUrl);
+      if (coverLetter) formData.append('cover_letter', coverLetter);
       const res = await uploadResume(selectedJob, formData);
       setResult(res.data);
       fetchCandidates(selectedJob);
@@ -166,6 +174,79 @@ const ResumeUpload = () => {
                     Browse File
                   </label>
                 </div>
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{
+                  display: 'block', marginBottom: '6px',
+                  fontSize: '13px', fontWeight: '600', color: '#333',
+                }}>Portfolio Link (optional)</label>
+                <input
+                  type="url"
+                  value={portfolioUrl}
+                  onChange={(e) => setPortfolioUrl(e.target.value)}
+                  placeholder="https://yourportfolio.com"
+                  style={{
+                    width: '100%', padding: '10px 14px',
+                    border: '2px solid #e2e8f0', borderRadius: '10px',
+                    fontSize: '13px', outline: 'none', boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{
+                  display: 'block', marginBottom: '6px',
+                  fontSize: '13px', fontWeight: '600', color: '#333',
+                }}>LinkedIn Profile (optional)</label>
+                <input
+                  type="url"
+                  value={linkedinUrl}
+                  onChange={(e) => setLinkedinUrl(e.target.value)}
+                  placeholder="https://linkedin.com/in/yourname"
+                  style={{
+                    width: '100%', padding: '10px 14px',
+                    border: '2px solid #e2e8f0', borderRadius: '10px',
+                    fontSize: '13px', outline: 'none', boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{
+                  display: 'block', marginBottom: '6px',
+                  fontSize: '13px', fontWeight: '600', color: '#333',
+                }}>GitHub Profile (optional)</label>
+                <input
+                  type="url"
+                  value={githubUrl}
+                  onChange={(e) => setGithubUrl(e.target.value)}
+                  placeholder="https://github.com/yourusername"
+                  style={{
+                    width: '100%', padding: '10px 14px',
+                    border: '2px solid #e2e8f0', borderRadius: '10px',
+                    fontSize: '13px', outline: 'none', boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{
+                  display: 'block', marginBottom: '6px',
+                  fontSize: '13px', fontWeight: '600', color: '#333',
+                }}>Cover Letter (optional)</label>
+                <textarea
+                  value={coverLetter}
+                  onChange={(e) => setCoverLetter(e.target.value)}
+                  placeholder="Write a short cover letter..."
+                  rows={4}
+                  style={{
+                    width: '100%', padding: '10px 14px',
+                    border: '2px solid #e2e8f0', borderRadius: '10px',
+                    fontSize: '13px', outline: 'none', boxSizing: 'border-box',
+                    resize: 'vertical', fontFamily: 'inherit',
+                  }}
+                />
               </div>
 
               <button

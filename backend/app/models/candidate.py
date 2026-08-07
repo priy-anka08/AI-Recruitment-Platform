@@ -21,3 +21,7 @@ class Candidate(Base):
     recommendation_label = Column(String(50), nullable=True)
     matched_skills = Column(Text, nullable=True)
     missing_skills = Column(Text, nullable=True)
+    portfolio_url = Column(String(500), nullable=True)
+    linkedin_url = Column(String(500), nullable=True)
+    github_url = Column(String(500), nullable=True)
+    cover_letter = Column(Text, nullable=True)

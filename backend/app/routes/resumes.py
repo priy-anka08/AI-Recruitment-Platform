@@ -2,7 +2,7 @@ import os
 import json
 import cloudinary
 import cloudinary.uploader
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from app.database.dependencies import get_db
 from app.models.candidate import Candidate
@@ -45,6 +45,10 @@ def auto_status_from_score(score: float) -> str:
 async def upload_resume(
     job_id: str,
     file: UploadFile = File(...),
+    portfolio_url: str = Form(None),
+    linkedin_url: str = Form(None),
+    github_url: str = Form(None),
+    cover_letter: str = Form(None),
     db: Session = Depends(get_db)
 ):
     job = db.query(Job).filter(Job.id == job_id).first()
@@ -119,6 +123,14 @@ async def upload_resume(
         existing.status = auto_status_from_score(ats_score)
         if resume_url:
             existing.resume_url = resume_url
+        if portfolio_url:
+            existing.portfolio_url = portfolio_url
+        if linkedin_url:
+            existing.linkedin_url = linkedin_url
+        if github_url:
+            existing.github_url = github_url
+        if cover_letter:
+            existing.cover_letter = cover_letter
         db.commit()
         db.refresh(existing)
         return existing
@@ -139,7 +151,11 @@ async def upload_resume(
         recommendation_label=recommendation_label,
         matched_skills=matched_skills,
         missing_skills=missing_skills,
-        status=auto_status_from_score(ats_score)
+        status=auto_status_from_score(ats_score),
+        portfolio_url=portfolio_url,
+        linkedin_url=linkedin_url,
+        github_url=github_url,
+        cover_letter=cover_letter
     )
     db.add(candidate)
     db.commit()
